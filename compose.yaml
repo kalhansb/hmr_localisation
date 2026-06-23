@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    image: mr_localisation:jazzy
-    container_name: mr_loc
+    image: hmr_localisation:jazzy
+    container_name: hmr_loc
     # host networking keeps DDS discovery + X11 trivial on a single machine
     network_mode: host
     ipc: host

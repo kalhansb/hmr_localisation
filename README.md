@@ -1,4 +1,4 @@
-# mr_localisation
+# hmr_localisation
 
 Map-based 3D LiDAR localization against a GLIM ground-truth point-cloud map
 (`gt_map/gt_map.ply`), using
@@ -9,7 +9,7 @@ recorded **Ouster + IMU rosbag**.
 **Status:** single-robot localization validated — scan-to-GT-map registration
 
 > The third-party packages in `src/` are **unmodified** — used as-is at the
-> commits pinned in [`mr_localisation.repos`](mr_localisation.repos). All custom
+> commits pinned in [`hmr_localisation.repos`](hmr_localisation.repos). All custom
 > work is in `config/`, `scripts/`, `docker/`, `compose.yaml`.
 
 📖 **Detailed findings & methodology:** [docs/localization_findings.md](docs/localization_findings.md)
@@ -20,7 +20,7 @@ recorded **Ouster + IMU rosbag**.
 ```
 compose.yaml              # Jazzy container (mounts ./ at /ws, X11, host net)
 docker/Dockerfile         # osrf/ros:jazzy-desktop + colcon + mcap plugin
-mr_localisation.repos     # pinned third-party sources (reconstructs src/)
+hmr_localisation.repos     # pinned third-party sources (reconstructs src/)
 config/
   gt_ouster_ndt.yaml      # localizer parameters (tuned)
   localization.rviz       # RViz layout
@@ -58,7 +58,7 @@ scripts and `config/`.
 ### 2. Fetch the third-party sources into `src/`
 Option A — vcstool (uses the pinned commits):
 ```bash
-vcs import src < mr_localisation.repos
+vcs import src < hmr_localisation.repos
 ```
 Option B — plain git:
 ```bash
@@ -71,7 +71,7 @@ git -C src/ndt_omp_ros2 checkout ef8a34985876359ecac7b7ad0004b6f409f6fbbc
 ### 3. Build the container image
 ```bash
 docker compose build          # pulls osrf/ros:jazzy-desktop (~4 GB), first time only
-docker compose up -d          # start container 'mr_loc'
+docker compose up -d          # start container 'hmr_loc'
 ```
 
 ### 4. Build the ROS 2 workspace (inside the container)

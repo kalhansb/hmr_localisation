@@ -1,4 +1,4 @@
-# Reconstruct src/ with:  vcs import src < mr_localisation.repos
+# Reconstruct src/ with:  vcs import src < hmr_localisation.repos
 # (pinned to the commits this workspace was built and validated against)
 repositories:
   lidar_localization_ros2:

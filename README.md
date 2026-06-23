@@ -12,6 +12,8 @@ recorded **Ouster + IMU rosbag**.
 > commits pinned in [`mr_localisation.repos`](mr_localisation.repos). All custom
 > work is in `config/`, `scripts/`, `docker/`, `compose.yaml`.
 
+📖 **Detailed findings & methodology:** [docs/localization_findings.md](docs/localization_findings.md)
+
 ---
 
 ## Repo layout

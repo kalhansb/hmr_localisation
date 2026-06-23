@@ -19,6 +19,7 @@ services:
       - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
     volumes:
       - ./:/ws
+      - ../bags:/ws/bags          # rosbags live beside the repo (HMR_Explo/bags), not in it
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     working_dir: /ws
     stdin_open: true

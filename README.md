@@ -16,20 +16,25 @@ recorded **Ouster + IMU rosbag**.
 
 ---
 
-## Repo layout
+## Project layout
+The rosbag lives **next to** the repo (it is huge and shared), not inside it:
 ```
-compose.yaml              # Jazzy container (mounts ./ at /ws, X11, host net)
-docker/Dockerfile         # osrf/ros:jazzy-desktop + colcon + mcap plugin
-hmr_localisation.repos     # pinned third-party sources (reconstructs src/)
-config/
-  gt_ouster_ndt.yaml      # localizer parameters (tuned)
-  localization.rviz       # RViz layout
-scripts/                  # run / replay / evaluate helpers
-gt_map/gt_map.ply         # ground-truth map (committed, ~48 MB)
-output/                   # result plots + trajectory CSVs
-bags/                     # <-- you place the rosbag here (NOT in git)
-src/                      # <-- third-party packages (fetched, NOT in git)
+HMR_Explo/                    # parent dir (not a git repo)
+├── bags/                     # <-- you place the rosbag here (large, NOT in git)
+└── hmr_localisation/         # this repo
+    compose.yaml              # Jazzy container (mounts ./ at /ws + ../bags at /ws/bags)
+    docker/Dockerfile         # osrf/ros:jazzy-desktop + colcon + mcap plugin
+    hmr_localisation.repos    # pinned third-party sources (reconstructs src/)
+    config/
+      gt_ouster_ndt.yaml      # localizer parameters (tuned)
+      localization.rviz       # RViz layout
+    scripts/                  # run / replay / evaluate helpers
+    gt_map/gt_map.ply         # ground-truth map (committed, ~48 MB)
+    output/                   # result plots + trajectory CSVs
+    src/                      # <-- third-party packages (fetched, NOT in git)
 ```
+The container bind-mounts `../bags` to `/ws/bags`, so the scripts still reference
+the bag as `bags/<name>` inside the container.
 
 ## Prerequisites
 - Docker + Docker Compose v2
@@ -44,9 +49,10 @@ src/                      # <-- third-party packages (fetched, NOT in git)
 
 ### 1. Place the bag
 This project is wired for the Ouster/IMU bag recorded on ROS 2 Jazzy (mcap).
-Put the bag directory here (exact name matters — the scripts reference it):
+Put the bag directory in `../bags` (one level up, beside the repo — exact name
+matters, the scripts reference it). It is mounted into the container at `/ws/bags`:
 ```
-bags/2026_06_19_18_19_06__kalhan-map-test-2_/
+HMR_Explo/bags/2026_06_19_18_19_06__kalhan-map-test-2_/
     ├── metadata.yaml
     └── *.mcap
 ```

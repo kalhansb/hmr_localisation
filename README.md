@@ -7,8 +7,6 @@ Map-based 3D LiDAR localization against a GLIM ground-truth point-cloud map
 recorded **Ouster + IMU rosbag**.
 
 **Status:** single-robot localization validated — scan-to-GT-map registration
-**~5 cm median** (RMS ~7 cm). Multi-robot (one localizer per robot in a shared
-`map` frame) is the next step. Deeper findings: [README_localization.md](README_localization.md).
 
 > The third-party packages in `src/` are **unmodified** — used as-is at the
 > commits pinned in [`mr_localisation.repos`](mr_localisation.repos). All custom
@@ -141,9 +139,7 @@ package's `evo`-based tooling.
   camera-only), so we localize the **`os_lidar`** frame directly; identity is the
   correct initial seed because the GLIM map is built in the lidar frame.
 
-## Gotchas (learned the hard way)
-- **DDS:** do not set `ROS_LOCALHOST_ONLY=1` — it breaks FastDDS discovery in the
-  container (no topics found). `compose.yaml` uses `ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST`.
+## Gotchas 
 - **PLY loads directly** (`pcl::io::loadPLYFile`) — no PLY→PCD conversion.
 - **IMU:** enabling preintegration *hurt* (the bag lacks the lidar↔IMU extrinsic,
   so accel gravity/lever-arm are wrong in `os_lidar`). To use it, supply the real

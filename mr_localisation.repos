@@ -1,0 +1,11 @@
+# Reconstruct src/ with:  vcs import src < mr_localisation.repos
+# (pinned to the commits this workspace was built and validated against)
+repositories:
+  lidar_localization_ros2:
+    type: git
+    url: https://github.com/rsasaki0109/lidar_localization_ros2.git
+    version: 0fe85a563b6d83641d09550d14cc4981ad0f5a97
+  ndt_omp_ros2:
+    type: git
+    url: https://github.com/rsasaki0109/ndt_omp_ros2.git
+    version: ef8a34985876359ecac7b7ad0004b6f409f6fbbc

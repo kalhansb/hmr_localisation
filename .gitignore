@@ -1,0 +1,18 @@
+# --- large data: rosbags (recorded sensor data + results bags) ---
+bags/
+output/acc_bag/
+output/*.mcap
+output/*.npz
+
+# --- third-party ROS sources (reconstruct with: vcs import src < mr_localisation.repos) ---
+src/
+
+# --- colcon build artifacts ---
+build/
+install/
+log/
+
+# --- editor / python caches ---
+.vscode/
+__pycache__/
+*.pyc

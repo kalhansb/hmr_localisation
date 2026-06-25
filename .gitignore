@@ -11,8 +11,14 @@ src/
 build/
 install/
 log/
+build_humble/
+install_humble/
+log_humble/
 
 # --- editor / python caches ---
 .vscode/
 __pycache__/
 *.pyc
+
+# --- machine-specific env (DISPLAY etc.) ---
+.env

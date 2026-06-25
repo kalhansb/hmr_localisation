@@ -1,0 +1,23 @@
+# Multi-robot localization roster.
+#
+# Each entry spawns ONE namespaced lidar_localization_ros2 instance. Every robot
+# localizes against the same gt_map.ply in the shared `map` frame; relative poses
+# fall out of it directly (see scripts/relative_pose.py, which reads the
+# namespaced /<name>/pcl_pose of each robot).
+#
+# `points_topic` is the robot's input cloud -- run_multi_robot.sh plays the bag
+# straight into it (the localizer's base frame stays 'os_lidar' to match the
+# bag's cloud frame_id, so no per-robot frame relay is needed).
+#
+# `initial_pose` is [x, y, z, qx, qy, qz, qw] in the map frame. robot2 is the
+# SAME platform replayed `--start-offset` seconds ahead on the route, so its seed
+# is auto-filled by scripts/run_multi_robot.sh from the validated trajectory
+# (output/path_final.csv) at that offset. The value here is only a placeholder;
+# run_multi_robot.sh writes the resolved roster to /tmp/robots_active.yaml.
+robots:
+  - name: robot1
+    points_topic: /robot1/points
+    initial_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+  - name: robot2
+    points_topic: /robot2/points
+    initial_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]

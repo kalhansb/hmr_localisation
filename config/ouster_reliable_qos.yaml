@@ -1,0 +1,15 @@
+# QoS overrides for `ros2 bag play --qos-profile-overrides-path`.
+#
+# The bag recorded /ouster/points with BEST_EFFORT reliability. scovox_node
+# subscribes to its input cloud with RELIABLE QoS, so it would never connect to
+# a best-effort publisher. Republishing /ouster/points as RELIABLE satisfies
+# both consumers (a reliable publisher is compatible with the localizer's
+# best-effort subscriber AND scovox's reliable subscriber).
+#
+# Volatile durability + shallow KeepLast keeps playback from blocking if a
+# subscriber falls behind (old samples are dropped rather than buffered).
+/ouster/points:
+  reliability: reliable
+  durability: volatile
+  history: keep_last
+  depth: 10

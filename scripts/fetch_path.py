@@ -8,6 +8,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 from nav_msgs.msg import Path
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/ws/output/path.csv"
+TOPIC = sys.argv[2] if len(sys.argv) > 2 else "/path"   # e.g. /robot1/path for multi-robot
 
 
 class Fetch(Node):
@@ -17,7 +18,7 @@ class Fetch(Node):
                          durability=DurabilityPolicy.TRANSIENT_LOCAL,
                          history=HistoryPolicy.KEEP_LAST)
         self.got = False
-        self.create_subscription(Path, "/path", self.cb, qos)
+        self.create_subscription(Path, TOPIC, self.cb, qos)
 
     def cb(self, m):
         with open(OUT, "w", newline="") as f:

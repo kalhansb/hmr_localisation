@@ -20,6 +20,7 @@ services:
     volumes:
       - ./:/ws
       - ../bags:/ws/bags          # rosbags live beside the repo (HMR_Explo/bags), not in it
+      - ../scovox:/scovox         # SCovox mapping workspace (built in-container for Jazzy)
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     working_dir: /ws
     stdin_open: true

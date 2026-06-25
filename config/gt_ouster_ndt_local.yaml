@@ -1,0 +1,65 @@
+# Single-robot localization against the GLIM ground-truth map (gt_map.ply)
+# using the Ouster bag. Mode A: localizer publishes map -> base_link directly.
+# Frames (global/odom/base/lidar) are passed on the launch command line.
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0          # wider NDT basin -> recovers from rough seed at turns
+      ndt_step_size: 0.1
+      ndt_num_threads: 4
+      ndt_max_iterations: 50       # more iterations to pull back from a bad seed
+      transform_epsilon: 0.01
+      score_threshold: 5.0         # tolerate a momentarily worse scan (avoid recovery spiral)
+      reject_above_score_threshold: true
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      # prevents false matches to far-away similar structure in the big map
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+
+      # --- scan preprocessing (Ouster) ---
+      voxel_leaf_size: 0.2         # downsample input scan (m)
+      scan_max_range: 100.0
+      scan_min_range: 1.0          # drop near-field self returns
+      scan_period: 0.1
+
+      # --- map ---
+      use_pcd_map: true
+      map_path: "/home/kalhan/projects/HMR_Explo/hmr_localisation/gt_map/gt_map.ply"
+
+      # --- initial pose (GLIM map origin == first frame, so identity is the seed) ---
+      set_initial_pose: true
+      initial_pose_x: 0.0
+      initial_pose_y: 0.0
+      initial_pose_z: 0.0
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 0.0
+      initial_pose_qw: 1.0         # NOTE: repo default is 0.0 (invalid); identity needs qw=1
+
+      # --- prediction ---
+      # NOTE: IMU preintegration was tried and made tracking WORSE (diverged
+      # ~130s vs ~300s without): the bag has no lidar<-imu extrinsic, so accel
+      # gravity-compensation + lever-arm are wrong in the os_lidar frame. To use
+      # IMU, supply the real extrinsic (from the robot URDF / GLIM config) and
+      # set imu_preintegration_use_base_frame_transform: true. Best config today
+      # is NDT-only + constant-velocity prediction.
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: false
+      predict_pose_from_previous_delta: true
+
+      # --- TF output ---
+      enable_map_odom_tf: false    # publish map -> base_link directly
+      global_frame_id: map
+      odom_frame_id: odom
+      # The bag has NO base_link->os_lidar extrinsic (tf_static is camera-only),
+      # and the GLIM map is built in the lidar frame, so we localize os_lidar
+      # directly as the base frame. Overridden on the launch CLI too.
+      base_frame_id: os_lidar
+
+      enable_debug: true
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0

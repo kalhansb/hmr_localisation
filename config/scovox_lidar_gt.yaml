@@ -68,7 +68,6 @@
     startup_tf_jump_threshold: 10.0
 
     # --- Mode ------------------------------------------------------------
-    use_split: false          # single Beta-occupancy substrate (geometry only)
     mode: "persistent"        # one continuous local map (single robot)
     dataset_mode: false
 

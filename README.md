@@ -110,8 +110,8 @@ docker compose exec ros bash /ws/scripts/run_localization_tree.sh 180    # first
 ```
 Resulting tree (verified with `tf2_tools view_frames`):
 ```
-map ──(NDT vs gt_map)──> odom ──(identity)──> base_link ──┬──> os_lidar
-                                                          └──> imu
+map ──(NDT vs gt_map)──> odom ──(robot_localization EKF)──> base_link ──┬──> os_lidar
+                                                                        └──> imu
 ```
 - `config/gt_ouster_ndt_tree.yaml` — Mode B (`enable_map_odom_tf: true`), base
   frame `base_link`, initial pose re-seeded to `(base_link → os_lidar)⁻¹`, IMU
@@ -120,16 +120,25 @@ map ──(NDT vs gt_map)──> odom ──(identity)──> base_link ──�
   (0.062, 0, 0.015; yaw 90°) are published as static transforms using the
   extrinsics from the bag's own `/tf_static`.
 
-**`odom → base_link` is an identity passthrough (for now).** We do not run a
-separate odometry source, so `odom` is pinned to `base_link` and the NDT
-map-match carries all the motion (it lands in `map → odom`). The tree has the
-correct REP-105 *shape* — fine for RViz / Nav2 / offline eval — but `odom` is not
-a real smoothing layer, so the pose can jump when NDT corrects. The robot has no
-wheel encoders, so the proper upgrade is **not** a second scan matcher (e.g.
-FAST-LIO, which would register the LiDAR twice) but an **EKF/UKF that fuses the
-single NDT pose with `/imu/data`** (hdl_localization / Autoware `ekf_localizer`
-style): the IMU does the high-rate smoothing, NDT bounds the drift, and you get a
-genuine continuous `odom → base_link` from one scan matcher.
+**`odom → base_link` is a `robot_localization` EKF** (`config/ekf_odom.yaml`,
+launched by `launch/ekf_odom.launch.py`). It replaces the earlier identity
+`static_transform_publisher`. The robot has no wheel encoders, so — rather than a
+second scan matcher (e.g. FAST-LIO, which would register the LiDAR twice) — the
+EKF fuses the **single NDT pose** (`/pcl_pose`, restamped to the `odom` frame by
+`scripts/ndt_pose_relay.py` → `/pcl_pose_odom`) with **`/imu/data`** angular
+velocity (hdl_localization / Autoware `ekf_localizer` style): the IMU smooths
+**orientation** at high rate between the (10–30 Hz) NDT poses, NDT bounds the
+drift, and you get a genuine continuous `odom → base_link` from one scan matcher.
+(Gyro-only, so the IMU does *not* dead-reckon translation — between NDT poses
+position is carried by the filter's constant-velocity model; see the tuning note
+in **Next steps** to add linear-acceleration fusion.) The localizer (Mode B) then publishes
+`map → odom = map→base · (odom→base)⁻¹`, so the `map → base` *product* is
+unchanged (SCovox, which looks up `map → os_lidar`, is unaffected) while `odom`
+becomes a real smoothing layer. Feeding the pose restamped to `odom` (not `map`)
+avoids a circular `map → odom` TF lookup — see `scripts/ndt_pose_relay.py`.
+
+> Requires `ros-jazzy-robot-localization` (added to `docker/Dockerfile`). After
+> pulling these changes, rebuild the image: `docker compose build`.
 
 ### Visualize in RViz (lightweight replay)
 Replays a recorded result over a downsampled map — no NDT, no 53 GB bag, smooth
@@ -208,13 +217,16 @@ Two localizer configs:
    per-scan NDT cost (`ndt_max_iterations` 50 → ~15–20, raise `voxel_leaf_size`,
    keep the local-map crop; or use GPU NDT) to reach ≥10 Hz, then re-run. This
    separates "method fails in the sparse zone" from "couldn't keep up."
-2. **EKF/IMU-fused `odom → base_link`.** Replace the identity passthrough with an
-   EKF/UKF that fuses the single NDT pose with `/imu/data` (hdl_localization /
-   Autoware `ekf_localizer` style). IMU propagation gives a smooth, continuous
-   odom that carries the robot through the feature-poor stretch so NDT can
-   re-acquire when structure returns — instead of the recovery supervisor latching
-   in `recovering`. One scan matcher, IMU does the smoothing — *not* a second
-   matcher like FAST-LIO.
+2. **EKF/IMU-fused `odom → base_link`.** ✅ *Done* — `config/ekf_odom.yaml` +
+   `launch/ekf_odom.launch.py` run a `robot_localization` EKF that fuses the
+   single NDT pose with `/imu/data` (hdl_localization / Autoware `ekf_localizer`
+   style), replacing the identity passthrough. See "Localization with a proper TF
+   tree" above. The gyro smooths orientation at high rate and the
+   constant-velocity model carries translation between scans — one scan matcher,
+   *not* a second matcher like FAST-LIO. Next tuning step: fuse IMU linear
+   acceleration (`ax/ay/az` in `ekf_odom.yaml`, needs a valid IMU orientation for
+   gravity removal) for genuine translational dead-reckoning through long NDT
+   dropouts; first fix the real-time deficit (step 1) so gaps stay short.
 
 ## Roadmap: multi-robot
 Run one `lidar_localization_ros2` instance per robot in its own namespace

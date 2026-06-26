@@ -5,7 +5,7 @@
 # run_localization_tree.sh instead of the flat map->os_lidar. The full tree:
 #
 #   map ──(NDT map-match, this localizer, enable_map_odom_tf)──> odom
-#   odom ──(identity static, replay/eval)──────────────────────> base_link
+#   odom ──(robot_localization EKF: NDT pose + IMU)────────────> base_link
 #   base_link ──(static extrinsics)──> os_lidar, imu
 #
 # Extrinsics (from the bag's base_link-rooted /tf_static URDF):
@@ -45,15 +45,23 @@ DUR_ARG=""
 [ -n "$DUR" ] && DUR_ARG="--playback-duration $DUR"
 
 PIDS=()
-cleanup() { kill "${PIDS[@]}" 2>/dev/null || true; }
+cleanup() {
+  kill "${PIDS[@]}" 2>/dev/null || true
+  # backstop-kill the ekf_odom launch children so no stale odom->base_link lingers
+  pkill -f ndt_pose_relay 2>/dev/null || true
+  pkill -f ekf_node 2>/dev/null || true
+}
 trap cleanup EXIT INT TERM
 
-# 1) odom -> base_link : identity passthrough. For replay/eval the NDT map-match
-#    carries the motion (map->odom). Swap this for KISS-ICP / a LIO publishing a
-#    real odom->base_link when you need a smooth, jump-free odometry layer.
-ros2 run tf2_ros static_transform_publisher \
-  --frame-id odom --child-frame-id base_link \
-  --ros-args -p use_sim_time:=true > /tmp/odom_tf.log 2>&1 &
+# 1) odom -> base_link : robot_localization EKF (replaces the old identity
+#    static_transform_publisher). Fuses the NDT global pose (/pcl_pose, restamped
+#    to the odom frame by ndt_pose_relay.py -> /pcl_pose_odom) with /imu/data
+#    angular velocity and broadcasts a smooth, high-rate, continuous
+#    odom -> base_link. The localizer (step 2) publishes
+#    map -> odom = map->base o (odom->base)^-1, so map->os_lidar (used by SCovox)
+#    is unchanged. See config/ekf_odom.yaml.
+ros2 launch /ws/launch/ekf_odom.launch.py use_sim_time:=true \
+  > /tmp/ekf_odom.log 2>&1 &
 PIDS+=($!)
 
 # 2) localizer in Mode B (map->odom), base frame = base_link.
@@ -98,5 +106,5 @@ ros2 bag play bags/2026_06_19_18_19_06__kalhan-map-test-2_ \
   --qos-profile-overrides-path /ws/config/ouster_reliable_qos.yaml $DUR_ARG
 
 echo "bag finished. scovox map still live in RViz; Ctrl-C to stop."
-SCV_PID="${PIDS[2]}"   # 0=odom_tf 1=localizer 2=scovox 3=rviz; wait on scovox to keep the map alive
+SCV_PID="${PIDS[2]}"   # 0=ekf_odom 1=localizer 2=scovox 3=rviz; wait on scovox to keep the map alive
 wait "$SCV_PID" 2>/dev/null || true

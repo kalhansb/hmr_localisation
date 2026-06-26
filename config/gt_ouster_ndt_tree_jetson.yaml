@@ -1,0 +1,99 @@
+# =======================================================================
+# Jetson-tuned NDT localization (Mode B, map->odom->base_link)
+# =======================================================================
+# Same REP-105 tree + EKF odom layer as gt_ouster_ndt_tree.yaml, tuned to leave
+# CPU headroom for the co-resident stack on a Jetson:
+#     Nav2  +  SCovox mapping  +  exploration planner  +  this localizer.
+#
+# No GPU/CUDA matcher exists in this package (NDT/NDT_OMP/GICP/GICP_OMP/SMALL_GICP
+# are all CPU), so the whole budget is CPU. Goal: a small, BOUNDED per-scan
+# footprint, not max single-node throughput.
+#
+# PRIMARY LEVER -- lighter map under a KEPT per-scan crop:
+#   The accuracy cfg's per-scan local-map crop rescans the full 3.06 M-pt map
+#   (O(N)) AND rebuilds the NDT target every scan -- this dominated per-scan cost
+#   (align was only ~0.25 s but effective rate was ~0.9 Hz). We keep the crop (it
+#   bounds BOTH false far-matches AND the recovery relocalization search -- with
+#   it OFF, recovery scans the whole 500 m map and never re-acquires) but feed it
+#   a 0.2 m-downsampled map (943 k pts, ~1/3), so the crop+rebuild is ~3x cheaper.
+#   Density matters: keep 0.2 m. A 0.3 m map (494 k) was too sparse -> NDT fitness
+#   rose past score_threshold -> reject spiral (measured). Regenerate the map with
+#   scripts/downsample_map.py (see map_path below).
+#
+#   Reality check: NDT-vs-prior-map at 10 Hz on a CPU Jetson while co-hosting
+#   Nav2 + scovox + planner is not realistic (no GPU matcher here). Target a
+#   STABLE few-Hz NDT correction; the EKF (config/ekf_odom.yaml) already supplies
+#   the smooth HIGH-rate odom->base_link, so map->odom only needs to bound drift.
+#
+# CPU budget -- set ndt_num_threads for YOUR board, leaving cores for the rest:
+#   Orin Nano (6 cores) -> ndt_num_threads: 2     (~4 cores for Nav2/scovox/planner)
+#   Orin NX   (8 cores) -> ndt_num_threads: 3     (~5 cores for the rest)   <-- default
+#   AGX Orin (12 cores) -> ndt_num_threads: 4-6   (~6-8 cores for the rest)
+#
+# Other mild reductions vs the accuracy cfg (kept gentle so NDT fit stays good --
+# over-aggressive scan downsampling/iter caps cause reject spirals):
+#   ndt_max_iterations 50 -> 30   good preint seed converges fast; caps worst case.
+#   ndt_num_threads     4 -> 3    leave cores for Nav2/scovox/planner.
+#   enable_debug     true -> false no per-scan matrix prints (CPU + log I/O).
+#   pose_publish_frequency 30->20 lighter pose timer.
+#   voxel_leaf_size  KEPT 0.2, scan_max_range KEPT 100 (fit quality).
+/**:
+    ros__parameters:
+      # --- registration (CPU NDT_OMP) ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0
+      ndt_step_size: 0.1
+      ndt_num_threads: 3           # <-- set per board (see CPU budget above)
+      ndt_max_iterations: 50       # keep high for robustness; cost is cut via the
+                                   # lighter map + crop, not by capping iterations
+      transform_epsilon: 0.01
+      score_threshold: 5.0
+      reject_above_score_threshold: true
+
+      # --- target: keep the per-scan crop (it bounds BOTH false far-matches AND
+      #     the recovery relocalization search -- disabling it makes recovery scan
+      #     the whole map and never re-acquire). Cheapened via a lighter map below. ---
+      enable_local_map_crop: true
+      local_map_radius: 60.0
+      local_map_min_points: 100
+
+      # --- scan preprocessing (Ouster) ---
+      voxel_leaf_size: 0.2         # keep dense for fit (0.4 caused a reject spiral)
+      scan_max_range: 100.0
+      scan_min_range: 1.0
+      scan_period: 0.1
+
+      # --- map: 0.2 m downsample (943k pts, ~1/3 of full) -> ~3x cheaper per-scan
+      #     crop+rebuild while staying dense enough to keep NDT fitness < threshold
+      #     (0.3 m / 494k was too sparse and reject-spiralled). Regenerate with:
+      #       python3 /ws/scripts/downsample_map.py /ws/gt_map/gt_map.ply \
+      #               /ws/gt_map/gt_map_ds.ply 0.2 ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_ds.ply"
+
+      # --- initial pose ((base_link -> os_lidar)^-1; same seed as the accuracy cfg) ---
+      set_initial_pose: true
+      initial_pose_x: 0.1105
+      initial_pose_y: 0.0
+      initial_pose_z: -0.404
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 1.0
+      initial_pose_qw: 0.0
+
+      # --- prediction (IMU preintegration ON: good seed -> fewer iters & rejects) ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: true
+      imu_preintegration_use_base_frame_transform: true
+      predict_pose_from_previous_delta: true
+
+      # --- TF output: Mode B (map -> odom); EKF owns odom -> base_link ---
+      enable_map_odom_tf: true
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: base_link
+
+      enable_debug: false          # no per-scan matrix prints on the robot
+      enable_timer_publishing: false
+      pose_publish_frequency: 20.0

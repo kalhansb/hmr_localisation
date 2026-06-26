@@ -9,7 +9,7 @@
 # SCovox still integrates in the `map` frame using `map -> os_lidar`. In tree
 # mode that transform resolves through the 3-hop chain
 #   map -> odom        (lidar_localization_ros2, enable_map_odom_tf:true)
-#   odom -> base_link  (identity static_transform_publisher)
+#   odom -> base_link  (robot_localization EKF, config/ekf_odom.yaml)
 #   base_link -> os_lidar (static extrinsic 0.1105,0,0.404 yaw 180)
 # rather than the single direct hop of Mode A. SCovox does a TF lookup, so the
 # number of hops is irrelevant — only that map -> os_lidar is available.
@@ -82,6 +82,21 @@
     # genuine divergence. Set runtime_tf_gate:false for legacy behaviour.
     runtime_tf_gate:           true
     runtime_tf_jump_threshold: 1.0
+
+    # --- Localization reject gate (option 2) -----------------------------
+    # The runtime jump gate above only catches pose *teleports*. When the NDT
+    # localizer loses lock it instead *freezes*: it rejects scans, stops
+    # updating its pose, but keeps re-broadcasting the stale map->odom on a
+    # 10 Hz timer — so the TF looks fresh and jump-free while the robot moves,
+    # and scovox would smear every new 15 m scan onto the stuck pose (the disc
+    # artifact). This gate subscribes to the localizer's /alignment_status and
+    # skips integration whenever accepted_gap_sec (time since the last accepted
+    # pose) exceeds the threshold below — i.e. it stops integrating exactly
+    # when localization is not accurate.
+    reject_gate_enable:               true
+    alignment_status_topic:           "/alignment_status"
+    reject_gate_max_accepted_gap_sec: 0.5
+    reject_gate_min_consecutive:      0
 
     # --- Mode ------------------------------------------------------------
     mode: "persistent"        # one continuous local map (single robot)

@@ -3,7 +3,7 @@
 # IMU integrated, replacing the flat map->os_lidar of run_localization.sh.
 #
 #   map ──(NDT map-match, this localizer)──> odom
-#   odom ──(identity static, replay/eval)──> base_link
+#   odom ──(robot_localization EKF: NDT pose + IMU)──> base_link
 #   base_link ──(static extrinsic from bag /tf_static)──> os_lidar, imu
 #
 # IMU (/imu/data, frame "imu") is fed to the localizer's preintegration with the
@@ -30,15 +30,28 @@ DUR_ARG=""
 [ -n "$DUR" ] && DUR_ARG="--playback-duration $DUR"
 
 PIDS=()
-cleanup() { kill "${PIDS[@]}" 2>/dev/null || true; }
-trap cleanup EXIT
+cleanup() {
+  kill "${PIDS[@]}" 2>/dev/null || true
+  # PIDS[0] is the `ros2 launch ekf_odom` parent; backstop-kill its children
+  # (ekf_node + relay) in case launch does not reap them, so no stale
+  # odom->base_link lingers into a back-to-back run (host net, ROS_DOMAIN_ID=0).
+  pkill -f ndt_pose_relay 2>/dev/null || true
+  pkill -f ekf_node 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
-# 1) odom -> base_link : identity passthrough. For replay/eval the NDT map-match
-#    carries the motion (map->odom). Swap this for KISS-ICP / a LIO publishing a
-#    real odom->base_link when you need a smooth, jump-free odometry layer.
-ros2 run tf2_ros static_transform_publisher \
-  --frame-id odom --child-frame-id base_link \
-  --ros-args -p use_sim_time:=true > /tmp/odom_tf.log 2>&1 &
+# 1) odom -> base_link : robot_localization EKF (replaces the old identity
+#    static_transform_publisher). It fuses the NDT global pose (/pcl_pose,
+#    restamped to the odom frame by ndt_pose_relay.py -> /pcl_pose_odom) with
+#    /imu/data angular velocity and BROADCASTS a smooth, high-rate, continuous
+#    odom -> base_link. The localizer (step 2, Mode B) then publishes
+#    map -> odom = map->base o (odom->base)^-1, so the map->base product is
+#    unchanged while odom becomes a real smoothing layer. See config/ekf_odom.yaml.
+#    (The localizer's first 1-2 map->odom publishes may warn "Could not get
+#    transform" until the EKF has produced its first odom->base from the first
+#    NDT pose; transient startup race, self-heals.)
+ros2 launch /ws/launch/ekf_odom.launch.py use_sim_time:=true \
+  > /tmp/ekf_odom.log 2>&1 &
 PIDS+=($!)
 
 # 2) localizer in Mode B (map->odom), base frame = base_link, IMU preintegration

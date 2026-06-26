@@ -2,9 +2,10 @@
 # producing a PROPER REP-105 TF tree:  map -> odom -> base_link -> {os_lidar, imu}
 #
 #   map  -> odom        : published by THIS localizer (enable_map_odom_tf: true)
-#   odom -> base_link   : identity static_transform_publisher (replay/eval; the
-#                         NDT map-match carries the motion). Swap for KISS-ICP /
-#                         a LIO when you need a true smooth odometry layer.
+#   odom -> base_link   : robot_localization EKF (config/ekf_odom.yaml), fusing
+#                         the NDT pose (/pcl_pose, restamped to odom) + /imu/data
+#                         angular velocity into a smooth, continuous odom layer.
+#                         (Used to be an identity static_transform_publisher.)
 #   base_link -> os_lidar, base_link -> imu : static_transform_publisher in the
 #                         run script, using the extrinsics the bag's /tf_static
 #                         actually carries (it is NOT camera-only):

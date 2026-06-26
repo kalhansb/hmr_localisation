@@ -1,0 +1,99 @@
+# =======================================================================
+# robot_localization EKF — continuous `odom -> base_link` for the Mode B tree
+# =======================================================================
+# Replaces the identity `odom -> base_link` static_transform_publisher that
+# run_localization_tree.sh / run_loc_scovox_tree.sh used to fake the odom layer.
+#
+# Tree (REP-105):
+#   map ──(NDT vs gt_map, lidar_localization_ros2, enable_map_odom_tf)──> odom
+#   odom ──(THIS EKF: NDT pose + /imu/data)──────────────────────────────> base_link
+#   base_link ──(static extrinsics)──> os_lidar, imu
+#
+# Design (hdl_localization / Autoware ekf_localizer style, one scan matcher):
+#   * pose0 = the NDT global pose (/pcl_pose) restamped into the odom frame by
+#     scripts/ndt_pose_relay.py -> /pcl_pose_odom. This is the absolute,
+#     drift-bounded measurement.
+#   * imu0 = /imu/data angular velocity, for high-rate ORIENTATION smoothing
+#     between the (10-30 Hz) NDT poses. (Gyro-only -> it does NOT dead-reckon
+#     translation; between NDT poses position rides the constant-velocity model.
+#     See the imu0 notes below to add acceleration fusion.)
+#   The EKF runs with world_frame=odom, so it BROADCASTS odom -> base_link.
+#   The localizer then publishes map -> odom = map->base_raw o (odom->base)^-1,
+#   so the map->base PRODUCT still equals the raw NDT pose (SCovox, which looks
+#   up map->os_lidar, is unaffected) while odom->base becomes smooth, high-rate
+#   and continuous.
+#
+# Why feed the NDT pose restamped to `odom` (not map): with world_frame=odom the
+# EKF would otherwise transform the map-frame pose via map->odom -- which is
+# produced FROM this EKF's output (circular / startup deadlock). map and odom are
+# coincident up to the residual the localizer keeps in map->odom, so restamping
+# is the standard, stable resolution. See scripts/ndt_pose_relay.py.
+# =======================================================================
+
+ekf_filter_node:
+  ros__parameters:
+    # use_sim_time is set by launch/ekf_odom.launch.py (true for bag replay).
+
+    frequency: 50.0            # odom->base broadcast rate (> NDT, < IMU)
+    sensor_timeout: 0.2        # coast on the motion model if a source stalls
+    two_d_mode: false          # outdoor walking route has roll/pitch/z -> full 3D
+    publish_tf: true           # broadcast odom -> base_link (replaces the static TF)
+    publish_acceleration: false
+
+    transform_time_offset: 0.0
+    transform_timeout: 0.0
+    print_diagnostics: true
+    debug: false
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom          # -> EKF estimates & broadcasts odom -> base_link
+
+    # --- NDT global pose, restamped to the odom frame by ndt_pose_relay.py -----
+    # Fuse absolute position + orientation (6 DoF). Order of the 15-element mask:
+    #   [ x,  y,  z,  roll, pitch, yaw,
+    #     vx, vy, vz, vroll, vpitch, vyaw,
+    #     ax, ay, az ]
+    pose0: /pcl_pose_odom
+    pose0_config: [true,  true,  true,
+                   true,  true,  true,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose0_differential: false
+    pose0_relative: false
+    pose0_queue_size: 10
+    # Mahalanobis gate: reject single-scan NDT outliers/teleports so odom->base
+    # coasts on IMU + the constant-velocity model through brief NDT glitches.
+    pose0_rejection_threshold: 6.0
+    pose0_nodelay: false
+
+    # --- IMU (/imu/data, frame "imu") -----------------------------------------
+    # Fuse angular velocity only (vroll, vpitch, vyaw) -> high-rate orientation
+    # smoothing between NDT poses. Gyro is rotated into base_link via the static
+    # base_link->imu TF, so it is always valid regardless of whether /imu/data
+    # carries a fused orientation quaternion.
+    #
+    # NOT fused by default:
+    #   * absolute orientation (roll/pitch/yaw): owned by the NDT pose. This bag
+    #     publishes /imu/mag separately, which usually means /imu/data has no
+    #     fused orientation -- so do not trust it here.
+    #   * linear acceleration (ax/ay/az): noisy and needs gravity removal (which
+    #     in turn needs a valid IMU orientation). To enable it, set ax/ay/az true
+    #     below AND keep imu0_remove_gravitational_acceleration: true, but only if
+    #     your /imu/data actually reports a valid orientation.
+    imu0: /imu/data
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  true,  true,  true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 50
+    imu0_remove_gravitational_acceleration: true
+
+    # process_noise_covariance / initial_estimate_covariance: left at the
+    # robot_localization defaults (reasonable 15x15 starting point). Tune here if
+    # odom->base looks too stiff (raise pose noise) or too jittery (lower it).

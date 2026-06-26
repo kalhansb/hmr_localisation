@@ -1,0 +1,106 @@
+# =======================================================================
+# SCovox — LiDAR occupancy mapping driven by hmr_localisation (TREE mode)
+# =======================================================================
+# Same geometry-only Beta-occupancy map as scovox_lidar_gt.yaml, but tuned for
+# the PROPER REP-105 TF tree produced by run_loc_scovox_tree.sh:
+#
+#   map -> odom -> base_link -> {os_lidar, imu}
+#
+# SCovox still integrates in the `map` frame using `map -> os_lidar`. In tree
+# mode that transform resolves through the 3-hop chain
+#   map -> odom        (lidar_localization_ros2, enable_map_odom_tf:true)
+#   odom -> base_link  (identity static_transform_publisher)
+#   base_link -> os_lidar (static extrinsic 0.1105,0,0.404 yaw 180)
+# rather than the single direct hop of Mode A. SCovox does a TF lookup, so the
+# number of hops is irrelevant — only that map -> os_lidar is available.
+#
+# Frame wiring (matches run_loc_scovox_tree.sh):
+#   integration_frame = map        (rays integrated in the localizer's map frame)
+#   base_frame        = os_lidar   (sensor/cloud frame; map->os_lidar via chain)
+#   cloud frame_id    = os_lidar
+#
+# NOTE: /ouster/points is best-effort in the bag but scovox_node subscribes
+# RELIABLE. Play the bag with config/ouster_reliable_qos.yaml so the cloud is
+# republished reliable.
+#
+# Load via:
+#   ros2 launch scovox_mapping lidar_mapping.launch.py \
+#       params_file:=/ws/config/scovox_lidar_tree.yaml \
+#       pointcloud_topic:=/ouster/points use_sim_time:=true
+# =======================================================================
+
+/**:
+  ros__parameters:
+
+    # --- Input -----------------------------------------------------------
+    # Non-empty -> LiDAR (PointCloud2) mode. The launch arg pointcloud_topic
+    # overrides this; kept here for stand-alone `ros2 run` use.
+    input_pointcloud_topic: "/ouster/points"
+
+    # --- Voxel grid ------------------------------------------------------
+    # 0.20 m keeps the persistent map tractable over the ~500 m outdoor route
+    # (0.10 m balloons voxel count / republish cost on software GL).
+    resolution: 0.20
+    inner_bits: 2
+    leaf_bits:  1
+
+    # --- Occupancy (Beta) evidence weights -------------------------------
+    w_occ:  8.0
+    w_free: 4.0
+    carve_band: -1.0          # full-ray free-space carving
+
+    # --- TSDF ------------------------------------------------------------
+    enable_tsdf: false        # occupancy only — fast, no dense surface
+    sdf_trunc_voxels: 3
+    tsdf_space_carving: false
+    band_only_integration: false
+
+    # --- Range gating (Ouster OS) ----------------------------------------
+    min_range: 1.0            # drop near-field self returns (matches NDT scan_min_range)
+    max_range: 15.0           # cap occupancy integration at 15 m (tighter map, less CPU)
+    range_decay_length: -1.0
+    grazing_angle_threshold: -1.0
+
+    # --- Frames (driven by lidar_localization_ros2, tree mode) -----------
+    base_frame:        "os_lidar"   # sensor/cloud frame; map->os_lidar via map->odom->base_link->os_lidar
+    integration_frame: "map"        # rays integrated in the localizer's map frame
+    map_frame:         "map"
+
+    # --- TF startup gate -------------------------------------------------
+    # Wait briefly for the localizer's map->os_lidar TF to stabilise before
+    # integrating; tolerate fast motion so we don't stall at startup.
+    startup_tf_stable_sec:     0.5
+    startup_tf_jump_threshold: 10.0
+
+    # --- TF runtime divergence gate --------------------------------------
+    # After the startup gate opens, keep watching the frame-to-frame pose
+    # jump. When the NDT localizer loses lock / diverges the pose teleports;
+    # a jump above runtime_tf_jump_threshold pauses integration and re-arms
+    # the stabilization wait (now using this strict threshold) so we stop
+    # smearing the map with bad poses until tracking recovers. At ~10 Hz and
+    # walking speed a real step is ~0.1-0.15 m, so 1.0 m only fires on
+    # genuine divergence. Set runtime_tf_gate:false for legacy behaviour.
+    runtime_tf_gate:           true
+    runtime_tf_jump_threshold: 1.0
+
+    # --- Mode ------------------------------------------------------------
+    mode: "persistent"        # one continuous local map (single robot)
+    dataset_mode: false
+
+    # --- Outputs ---------------------------------------------------------
+    publish_pointcloud:      true
+    occupancy_vis_threshold: 0.6      # min p_occ for a voxel to be emitted
+    scovox_publish_rate:     0.5      # full-map republish [Hz] (lighter for big map)
+    pointcloud_topic:        "~/pointcloud"
+    scovox_topic:            "~/scovox"
+
+    # --- 2-D planning grid -----------------------------------------------
+    publish_planning_map:     false
+    planning_map_topic:       "~/planning_map"
+    planning_map_resolution:  0.20
+    planning_map_size_m:      80.0
+    planning_map_origin_x:   -40.0
+    planning_map_origin_y:   -40.0
+    planning_map_min_z:      -0.5
+    planning_map_max_z:       2.0
+    planning_map_inflation_m: 0.0

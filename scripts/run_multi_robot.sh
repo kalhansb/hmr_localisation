@@ -3,7 +3,7 @@
 #
 # We only have ONE robot's bag, so robot2 is the SAME platform replayed
 # `--start-offset OFFSET` seconds ahead on the route. Both robots localize into
-# the shared `map` frame; scripts/relative_pose.py reports robot2's pose relative
+# the shared `map` frame; scripts/multi_robot/relative_pose.py reports robot2's pose relative
 # to robot1 (a genuine, non-zero, time-varying baseline). Swap in a real second
 # bag later by pointing robot2's bag play / topics at it -- nothing else changes.
 #
@@ -41,7 +41,7 @@ cleanup() {
 trap cleanup EXIT
 
 # 1) resolve robot2's seed from the validated trajectory at +OFFSET
-python3 scripts/seed_robots.py config/robots.yaml "$SEED_CSV" "$OFFSET" "$ROSTER"
+python3 scripts/multi_robot/seed_robots.py config/robots.yaml "$SEED_CSV" "$OFFSET" "$ROSTER"
 
 # 2) launch both namespaced localizers (wall clock; timing is msg-stamp driven)
 ros2 launch launch/multi_robot_localization.launch.py \
@@ -62,7 +62,7 @@ echo "  localizers active: ${n_active:-0}/${#ROBOTS[@]}"
 # 4) relative-pose monitor: writes output/relative_pose.csv, the per-robot
 #    output/path_<ns>.csv trajectories (from pcl_pose), and RViz markers
 REL_CSV=/ws/output/relative_pose.csv TRAJ_DIR=/ws/output \
-  python3 scripts/relative_pose.py "${ROBOTS[@]}" > /tmp/relpose.log 2>&1 &
+  python3 scripts/multi_robot/relative_pose.py "${ROBOTS[@]}" > /tmp/relpose.log 2>&1 &
 REL=$!; PIDS+=($REL)
 sleep 1
 
@@ -109,5 +109,5 @@ if os.path.exists(p):
 PY
 echo "  trajectories: output/path_robot1.csv, output/path_robot2.csv"
 echo "  relative pose log: output/relative_pose.csv"
-echo "  plot on host: python3 scripts/plot_multi_robot.py"
+echo "  plot on host: python3 scripts/multi_robot/plot_multi_robot.py"
 echo "================================================="

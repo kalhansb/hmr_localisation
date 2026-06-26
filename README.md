@@ -26,9 +26,11 @@ HMR_Explo/                    # parent dir (not a git repo)
     docker/Dockerfile         # osrf/ros:jazzy-desktop + colcon + mcap plugin
     hmr_localisation.repos    # pinned third-party sources (reconstructs src/)
     config/
-      gt_ouster_ndt.yaml      # localizer parameters (tuned)
+      gt_ouster_ndt.yaml      # Mode A localizer params (flat map -> os_lidar)
+      gt_ouster_ndt_tree.yaml # Mode B params (map -> odom -> base_link, IMU)
       localization.rviz       # RViz layout
     scripts/                  # run / replay / evaluate helpers
+      multi_robot/ analysis/ scovox/   # grouped secondary scripts
     gt_map/gt_map.ply         # ground-truth map (committed, ~48 MB)
     output/                   # result plots + trajectory CSVs
     src/                      # <-- third-party packages (fetched, NOT in git)
@@ -99,13 +101,43 @@ docker compose exec ros bash /ws/scripts/run_localization.sh        # full bag
 docker compose exec ros bash /ws/scripts/run_localization.sh 180    # first 180 s
 ```
 
+### Localization with a proper TF tree (`map → odom → base_link`, IMU integrated)
+`run_localization.sh` (above) publishes a single flat `map → os_lidar`. For a
+REP-105 tree with IMU integrated, use:
+```bash
+docker compose exec ros bash /ws/scripts/run_localization_tree.sh        # full bag
+docker compose exec ros bash /ws/scripts/run_localization_tree.sh 180    # first 180 s
+```
+Resulting tree (verified with `tf2_tools view_frames`):
+```
+map ──(NDT vs gt_map)──> odom ──(identity)──> base_link ──┬──> os_lidar
+                                                          └──> imu
+```
+- `config/gt_ouster_ndt_tree.yaml` — Mode B (`enable_map_odom_tf: true`), base
+  frame `base_link`, initial pose re-seeded to `(base_link → os_lidar)⁻¹`, IMU
+  preintegration on with `imu_preintegration_use_base_frame_transform: true`.
+- `base_link → os_lidar` (0.1105, 0, 0.404; yaw 180°) and `base_link → imu`
+  (0.062, 0, 0.015; yaw 90°) are published as static transforms using the
+  extrinsics from the bag's own `/tf_static`.
+
+**`odom → base_link` is an identity passthrough (for now).** We do not run a
+separate odometry source, so `odom` is pinned to `base_link` and the NDT
+map-match carries all the motion (it lands in `map → odom`). The tree has the
+correct REP-105 *shape* — fine for RViz / Nav2 / offline eval — but `odom` is not
+a real smoothing layer, so the pose can jump when NDT corrects. The robot has no
+wheel encoders, so the proper upgrade is **not** a second scan matcher (e.g.
+FAST-LIO, which would register the LiDAR twice) but an **EKF/UKF that fuses the
+single NDT pose with `/imu/data`** (hdl_localization / Autoware `ekf_localizer`
+style): the IMU does the high-rate smoothing, NDT bounds the drift, and you get a
+genuine continuous `odom → base_link` from one scan matcher.
+
 ### Visualize in RViz (lightweight replay)
 Replays a recorded result over a downsampled map — no NDT, no 53 GB bag, smooth
 on software GL.
 ```bash
 xhost +local:                                   # on the host, once per login
 docker compose exec -d ros bash -lc \
-  'source /opt/ros/jazzy/setup.bash; source /ws/install/setup.bash; python3 /ws/scripts/replay_result.py'
+  'source /opt/ros/jazzy/setup.bash; source /ws/install/setup.bash; python3 /ws/scripts/analysis/replay_result.py'
 docker compose exec -d -e DISPLAY=:1 ros bash -lc \
   'source /opt/ros/jazzy/setup.bash; source /ws/install/setup.bash; ros2 run rviz2 rviz2 -d /ws/config/localization.rviz'
 ```
@@ -119,7 +151,7 @@ Records a short results bag, then reports scan-to-GT-map nearest-neighbour error
 # (with the localizer running and the bag playing — see scripts/run_localization.sh)
 docker compose exec ros bash -lc \
   'source /opt/ros/jazzy/setup.bash; cd /ws; ros2 bag record -o output/acc_bag /ouster/points /pcl_pose'
-python3 scripts/analyze_from_bag.py gt_map/gt_map.ply output/acc_bag   # needs: pip install rosbags scipy numpy
+python3 scripts/analysis/analyze_from_bag.py gt_map/gt_map.ply output/acc_bag   # needs: pip install rosbags scipy numpy
 ```
 
 ### Stop
@@ -140,20 +172,49 @@ GPS (`/fix`) is **not** a usable reference here (~20 m std-dev, not RTK). For an
 absolute APE-in-metres number, export the GLIM trajectory and compare with the
 package's `evo`-based tooling.
 
-## Configuration & frames (`config/gt_ouster_ndt.yaml`)
+## Configuration & frames
+Two localizer configs:
+- `config/gt_ouster_ndt.yaml` — **Mode A**, flat `map → os_lidar` (simplest;
+  `run_localization.sh`).
+- `config/gt_ouster_ndt_tree.yaml` — **Mode B**, full `map → odom → base_link`
+  tree with IMU (`run_localization_tree.sh`).
+
 - NDT_OMP, `ndt_resolution: 2.0`, 50 iters, local-map crop r=80 m (robust at
   turns). Drop `ndt_resolution` to 1.0 for max accuracy in structured areas.
-- The bag has **no `base_link → os_lidar` extrinsic** (its `/tf_static` is
-  camera-only), so we localize the **`os_lidar`** frame directly; identity is the
-  correct initial seed because the GLIM map is built in the lidar frame.
+- The bag's `/tf_static` carries the **full robot URDF** rooted at `base_link`
+  (`base_link → os_lidar`, `base_link → imu`, wheels, camera, …) — it is *not*
+  camera-only. **Mode A** localizes `os_lidar` directly (identity seed, since the
+  GLIM map is built in the lidar frame); **Mode B** localizes `base_link`,
+  re-seeding the initial pose to `(base_link → os_lidar)⁻¹`.
 
 ## Gotchas 
 - **PLY loads directly** (`pcl::io::loadPLYFile`) — no PLY→PCD conversion.
-- **IMU:** enabling preintegration *hurt* (the bag lacks the lidar↔IMU extrinsic,
-  so accel gravity/lever-arm are wrong in `os_lidar`). To use it, supply the real
-  extrinsic and set `imu_preintegration_use_base_frame_transform: true`.
-- **Known limitation:** NDT-only loses lock once at a mid-route maneuver (not map
-  sparsity). IMU/odom fusion with the correct extrinsic is the fix.
+- **IMU:** the lidar↔IMU extrinsic *is* in the bag (`base_link → imu`, yaw 90°).
+  The earlier "preintegration hurt" result was because the flat Mode A run never
+  published `/tf_static`, so the localizer had no extrinsic to rotate the IMU into
+  the base frame — **not** a missing extrinsic. Mode B publishes the transform and
+  sets `imu_preintegration_use_base_frame_transform: true`, so preintegration is
+  valid there (verified: 0 IMU base-frame transform failures).
+- **Known limitation (validated full-bag, Mode B):** recovers *twice* through the
+  ~130–300 s mid-route maneuver where Mode A diverged, but still loses lock in the
+  back third at a feature-sparse / open region near the map edge (last good pose
+  ~`(7.5, 32.2)`; 432 good / 165 rejected scans; overlay `output/eval_tree.png`).
+  Confounded by a real-time deficit — the localizer ran at ~1.2 Hz, dropping ~88 %
+  of the 10 Hz scans. See **Next steps** below.
+
+## Next steps (localization robustness)
+1. **Make it real-time first.** At ~1.2 Hz the localizer drops ~88 % of scans, so
+   IMU must bridge ~0.8 s gaps and the late-route result is confounded. Lower the
+   per-scan NDT cost (`ndt_max_iterations` 50 → ~15–20, raise `voxel_leaf_size`,
+   keep the local-map crop; or use GPU NDT) to reach ≥10 Hz, then re-run. This
+   separates "method fails in the sparse zone" from "couldn't keep up."
+2. **EKF/IMU-fused `odom → base_link`.** Replace the identity passthrough with an
+   EKF/UKF that fuses the single NDT pose with `/imu/data` (hdl_localization /
+   Autoware `ekf_localizer` style). IMU propagation gives a smooth, continuous
+   odom that carries the robot through the feature-poor stretch so NDT can
+   re-acquire when structure returns — instead of the recovery supervisor latching
+   in `recovering`. One scan matcher, IMU does the smoothing — *not* a second
+   matcher like FAST-LIO.
 
 ## Roadmap: multi-robot
 Run one `lidar_localization_ros2` instance per robot in its own namespace

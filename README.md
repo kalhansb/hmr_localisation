@@ -9,9 +9,12 @@ recorded **Ouster + IMU rosbag**.
 **Status:** single-robot localization validated — scan-to-GT-map registration
 
 > The third-party packages in `src/` are used at the commits pinned in
-> [`hmr_localisation.repos`](hmr_localisation.repos). The NDT packages are
-> **unmodified**; `icp_localization_ros2` carries two small tracked patches
-> ([`patches/`](patches/), see [Alternative localizer: ICP](#alternative-localizer-icp-libpointmatcher-humble)).
+> [`hmr_localisation.repos`](hmr_localisation.repos). The NDT and ICP packages
+> each carry small **tracked patches** in [`patches/`](patches/): NDT gets the
+> registration cloud keep-alive memory fix (`4096 → 4`; see
+> [Configuration & frames](#configuration--frames)), and `icp_localization_ros2`
+> two IMU-buffer patches (see [Alternative localizer: ICP](#alternative-localizer-icp-libpointmatcher-humble)).
+> Apply them after fetching the sources (NDT in Setup step 2; ICP in its build steps).
 > All other custom work is in `config/`, `scripts/`, `docker/`, `compose.yaml`.
 
 📖 **Detailed findings & methodology:** [docs/localization_findings.md](docs/localization_findings.md)
@@ -76,6 +79,12 @@ git clone https://github.com/rsasaki0109/lidar_localization_ros2.git src/lidar_l
 git -C src/lidar_localization_ros2 checkout 0fe85a563b6d83641d09550d14cc4981ad0f5a97
 git clone -b humble https://github.com/rsasaki0109/ndt_omp_ros2.git src/ndt_omp_ros2
 git -C src/ndt_omp_ros2 checkout ef8a34985876359ecac7b7ad0004b6f409f6fbbc
+```
+After fetching (either option), apply the NDT keep-alive memory patch (`4096 → 4`;
+see [Configuration & frames](#configuration--frames)) — without it a fresh checkout
+keeps the high-RAM upstream default:
+```bash
+git -C src/lidar_localization_ros2 apply patches/lidar_localization_ros2-keepalive-count.patch
 ```
 
 ### 3. Build the container image
@@ -441,6 +450,16 @@ Two localizer configs:
 
 - NDT_OMP, `ndt_resolution: 2.0`, 50 iters, local-map crop r=80 m (robust at
   turns). Drop `ndt_resolution` to 1.0 for max accuracy in structured areas.
+- **Registration cloud keep-alive = 4**
+  (`src/lidar_localization_ros2/src/lidar_localization_component.cpp`,
+  `kRegistration{Source,Target}CloudKeepAliveCount`). NDT_OMP/GICP hold pointers
+  into their input source/target clouds, so the node retains the last *N* clouds
+  to avoid a use-after-free (including the shutdown-leak path). The pinned upstream
+  value was **4096** (retain ~everything → large, ever-growing RAM); cutting it to
+  **4** dropped memory markedly with **no accuracy cost** — the deques are
+  write-only lifetime buffers, never read back into registration (alignment always
+  uses only the latest cloud). **2** is the theoretical floor (current + previous);
+  **4** keeps a safety margin (e.g. async/retry overlap, the shutdown leak).
 - The bag's `/tf_static` carries the **full robot URDF** rooted at `base_link`
   (`base_link → os_lidar`, `base_link → imu`, wheels, camera, …) — it is *not*
   camera-only. **Mode A** localizes `os_lidar` directly (identity seed, since the

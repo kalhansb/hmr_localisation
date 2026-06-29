@@ -1,0 +1,22 @@
+diff --git a/src/lidar_localization_component.cpp b/src/lidar_localization_component.cpp
+index 6efcb30..fa85382 100644
+--- a/src/lidar_localization_component.cpp
++++ b/src/lidar_localization_component.cpp
+@@ -42,8 +42,15 @@ double stamp_to_sec(const builtin_interfaces::msg::Time & stamp)
+   return static_cast<double>(stamp.sec) + static_cast<double>(stamp.nanosec) * 1e-9;
+ }
+ 
+-constexpr std::size_t kRegistrationSourceCloudKeepAliveCount = 4096;
+-constexpr std::size_t kRegistrationTargetCloudKeepAliveCount = 4096;
++// HMR patch: registration cloud keep-alive count. NDT_OMP/GICP hold pointers
++// into their input source/target clouds, so we retain the last N clouds to avoid
++// a use-after-free (including the shutdown-leak path). Upstream pinned this at
++// 4096 (retain ~everything), which is large, ever-growing RAM; 4 cuts memory
++// markedly with no accuracy cost -- these deques are write-only lifetime buffers,
++// never read back into registration (alignment always uses only the latest
++// cloud). 2 is the theoretical floor (current + previous); 4 keeps a margin.
++constexpr std::size_t kRegistrationSourceCloudKeepAliveCount = 4;
++constexpr std::size_t kRegistrationTargetCloudKeepAliveCount = 4;
+ 
+ void keep_cloud_alive(
+   std::deque<pcl::PointCloud<pcl::PointXYZI>::Ptr> * recent_clouds,

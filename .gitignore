@@ -22,3 +22,9 @@ __pycache__/
 
 # --- machine-specific env (DISPLAY etc.) ---
 .env
+
+# --- Dear ImGui window-layout state ---
+imgui.ini
+
+# --- derived ICP map (regenerate: scripts/ply_to_pcd.py) ---
+gt_map/*.pcd

@@ -1,0 +1,20 @@
+# QoS overrides for `ros2 bag play --qos-profile-overrides-path` in the HUMBLE
+# container (icp_localization_ros2).
+#
+# Two reasons every played topic needs an entry here:
+#  1) The ICP accumulator subscribes to /ouster/points with RELIABLE QoS, but the
+#     bag offered BEST_EFFORT -> republish RELIABLE so they match.
+#  2) The bag was recorded on Jazzy; after reindexing for Humble, bag play cannot
+#     parse the per-topic offered_qos_profiles in the metadata (yaml-cpp "bad
+#     conversion"). Supplying an override for a topic bypasses that broken read,
+#     so EVERY played topic must be listed or playback aborts.
+/ouster/points:
+  history: keep_last
+  depth: 10
+  reliability: reliable
+  durability: volatile
+/imu/data:
+  history: keep_last
+  depth: 200
+  reliability: reliable
+  durability: volatile

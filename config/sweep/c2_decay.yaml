@@ -1,0 +1,114 @@
+# === SWEEP CONFIG c2_decay ===
+# overrides: {'carve_skip_occ_threshold': 0.7, 'range_decay_length': 8.0, 'max_range': 15.0, 'w_occ': 8.0, 'w_free': 4.0, 'occupancy_vis_threshold': 0.6}
+# =======================================================================
+# SCovox — LiDAR occupancy mapping driven by GLIM SLAM (koide3/glim_ros2)
+# =======================================================================
+# Same geometry-only Beta-occupancy map as scovox_lidar_tree.yaml, but tuned for
+# the TF tree produced by GLIM LiDAR-IMU SLAM instead of the NDT/ICP localizers.
+#
+# GLIM (librviz_viewer.so) broadcasts:
+#   map  -> odom              (loop-closure correction; JUMPS when a loop closes)
+#   odom -> <imu_frame>       (real-time odometry; smooth, drifts slowly)
+#   <imu_frame> -> os_lidar   (static, from config_sensors.json T_lidar_imu)
+#
+# SCovox integrates each /ouster/points scan in `integration_frame` by looking up
+# integration_frame -> cloud.header.frame_id (= os_lidar). We integrate in GLIM's
+# `map` frame: it is GLIM's globally-optimized (loop-closed) frame, so the
+# occupancy map is globally consistent. The full chain map->odom->imu->os_lidar is
+# published by GLIM, so map->os_lidar resolves directly (verified) -- no extra
+# static transform is needed. Trade-off vs `odom`: when a loop closure shifts
+# map->odom, already-integrated voxels do not retro-correct, so a seam can appear;
+# for a purely smooth/jump-free (but globally drifting) map use integration_frame: "odom".
+#
+# Frame wiring (matches scripts/glim/run_glim_scovox.sh):
+#   integration_frame = map        (GLIM globally-optimized frame)
+#   base_frame        = os_lidar   (sensor/cloud frame; = /ouster/points frame_id)
+#   cloud frame_id    = os_lidar
+#
+# NOTE: /ouster/points is best-effort in the bag but scovox_node subscribes
+# RELIABLE. Play the bag with config/ouster_reliable_qos.yaml so the cloud is
+# republished reliable (GLIM's best-effort sub still receives a reliable publisher).
+#
+# Load via:
+#   ros2 launch scovox_mapping lidar_mapping.launch.py \
+#       params_file:=/ws/config/scovox_lidar_glim.yaml \
+#       pointcloud_topic:=/ouster/points use_sim_time:=true
+# =======================================================================
+
+/**:
+  ros__parameters:
+
+    # --- Input -----------------------------------------------------------
+    input_pointcloud_topic: "/ouster/points"
+
+    # --- Voxel grid ------------------------------------------------------
+    resolution: 0.20
+    inner_bits: 2
+    leaf_bits:  1
+
+    # --- Occupancy (Beta) evidence weights -------------------------------
+    w_occ: 8.0        # [sweep]
+    w_free: 4.0        # [sweep]
+    carve_skip_occ_threshold: 0.7        # [sweep] carve wall-guard
+    carve_band: -1.0          # full-ray free-space carving
+
+    # --- TSDF ------------------------------------------------------------
+    enable_tsdf: false        # occupancy only — fast, no dense surface
+    sdf_trunc_voxels: 3
+    tsdf_space_carving: false
+    band_only_integration: false
+
+    # --- Range gating (Ouster OS) ----------------------------------------
+    min_range: 1.0            # drop near-field self returns
+    max_range: 15.0        # [sweep]
+    range_decay_length: 8.0        # [sweep]
+    grazing_angle_threshold: -1.0
+
+    # --- Frames (driven by GLIM SLAM) ------------------------------------
+    base_frame:        "os_lidar"   # sensor/cloud frame; odom->os_lidar via odom->imu->os_lidar
+    integration_frame: "odom"       # GLIM smooth/jump-free odometry frame (drifts globally; NO loop closure)
+    map_frame:         "odom"       # unused on the LiDAR path; left for completeness
+
+    # --- TF startup gate -------------------------------------------------
+    # Wait briefly for GLIM's odom->os_lidar TF to appear before integrating.
+    startup_tf_stable_sec:     0.5
+    startup_tf_jump_threshold: 10.0
+
+    # --- TF runtime divergence gate --------------------------------------
+    # DISABLED for GLIM. This gate was built to catch NDT pose *teleports*.
+    # GLIM's odom frame is smooth and jump-free, so the gate is unnecessary; and
+    # if integrating in GLIM's "map" frame, loop-closure corrections would be
+    # wrongly rejected here as "divergence". Leave off for GLIM-driven mapping.
+    runtime_tf_gate:           false
+    runtime_tf_jump_threshold: 1.0
+
+    # --- Localization reject gate ----------------------------------------
+    # DISABLED for GLIM. This gate subscribes to the NDT localizer's
+    # /alignment_status; GLIM publishes no such topic, so it must be off (else it
+    # would block ALL integration waiting for a status that never arrives).
+    reject_gate_enable:               false
+    alignment_status_topic:           "/alignment_status"
+    reject_gate_max_accepted_gap_sec: 0.5
+    reject_gate_min_consecutive:      0
+
+    # --- Mode ------------------------------------------------------------
+    mode: "persistent"        # one continuous local map (single robot)
+    dataset_mode: false
+
+    # --- Outputs ---------------------------------------------------------
+    publish_pointcloud:      true
+    occupancy_vis_threshold: 0.6        # [sweep]
+    scovox_publish_rate:     0.5      # full-map republish [Hz] (lighter for big map)
+    pointcloud_topic:        "~/pointcloud"
+    scovox_topic:            "~/scovox"
+
+    # --- 2-D planning grid -----------------------------------------------
+    publish_planning_map:     false
+    planning_map_topic:       "~/planning_map"
+    planning_map_resolution:  0.20
+    planning_map_size_m:      80.0
+    planning_map_origin_x:   -40.0
+    planning_map_origin_y:   -40.0
+    planning_map_min_z:      -0.5
+    planning_map_max_z:       2.0
+    planning_map_inflation_m: 0.0

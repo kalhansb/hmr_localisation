@@ -1,0 +1,63 @@
+# ICP localization (baiyeweiguang/icp_localization_ros2, libpointmatcher) against
+# the GLIM ground-truth map (gt_map.pcd) using the Ouster bag.
+# Runs in the ROS 2 Humble container (hmr_loc_humble); node name is "icp_localization".
+#
+# This mirrors the NDT "Mode A" setup: localize the os_lidar (range_sensor) frame
+# directly against the lidar-frame GLIM map, identity seed, IMU used only to
+# extrapolate the pose between scans. The node publishes map -> range_sensor.
+/icp_localization:
+  ros__parameters:
+    # ICP loads a PCD map (PCL loadPCDFile); regenerate from PLY with
+    # scripts/ply_to_pcd.py if missing. libpointmatcher matches each scan against
+    # the WHOLE map (no local crop like NDT), so the downsampled map (494k pts,
+    # voxel ~0.3 m) is used to keep ICP fast enough to not lag past the IMU buffer.
+    # Use gt_map.pcd (3.06M) only if you also slow playback right down.
+    pcd_file_path: "/ws/gt_map/gt_map_ds03.pcd"
+
+    # libpointmatcher ICP + per-scan input filters (our copies, tunable here).
+    icp_config_path: "/ws/config/icp_gt.yaml"
+    input_filters_config_path: "/ws/config/input_filters_ouster.yaml"
+
+    icp_localization_ros2:
+      range_data_topic: "/ouster/points"
+      num_accumulated_range_data: 1        # Ouster publishes full scans
+      imu_data_topic: "/imu/data"
+      odometry_data_topic: "/icp_odometry_unused"
+      is_use_odometry: false               # no wheel/visual odom -> predict from IMU
+      is_provide_odom_frame: false         # publish map -> range_sensor directly
+      gravity_vector_filter_time_constant: 0.01
+      fixed_frame: "map"
+      min_num_odom_msgs_before_ready: 5
+
+    # Range-sensor (os_lidar) pose in the map at start. The GLIM map is built in
+    # the lidar frame with origin == first frame, so identity is the seed.
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      roll: 0.0    # degrees
+      pitch: 0.0
+      yaw: 0.0
+
+    calibration:
+      # Pose of the range sensor (os_lidar) frame expressed in the IMU frame,
+      # i.e. T_imu<-lidar (computeFromImu applies imuToLidar^-1 * dT_imu * imuToLidar).
+      # Derived from the bag /tf_static: base->os_lidar (0.1105,0,0.404; yaw 180) and
+      # base->imu (0.062,0,0.015; yaw 90)  =>  T_imu<-lidar = (0,-0.0485,0.389; yaw 90).
+      # NOTE: calibration RPY is in RADIANS (initial_pose RPY is degrees, but the
+      # calibration parameters are read with isRPYInDegrees=false). yaw 90 deg = pi/2.
+      imu_to_range_sensor:
+        x: 0.0
+        y: -0.0485
+        z: 0.389
+        roll: 0.0    # radians
+        pitch: 0.0
+        yaw: 1.5707963
+      # Unused (is_use_odometry=false); identity.
+      odometry_source_to_range_sensor:
+        x: 0.0
+        y: 0.0
+        z: 0.0
+        roll: 0.0
+        pitch: 0.0
+        yaw: 0.0

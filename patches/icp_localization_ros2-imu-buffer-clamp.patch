@@ -1,0 +1,30 @@
+diff --git a/src/transform/ImuTracker.cpp b/src/transform/ImuTracker.cpp
+index 792e87e..386a29a 100644
+--- a/src/transform/ImuTracker.cpp
++++ b/src/transform/ImuTracker.cpp
+@@ -127,11 +127,20 @@ void ImuTracker::fillIntegrationBuffer(const Time &start,
+   if (imuBuffer_.empty()) {
+     return;
+   }
+-  const auto startTime =
+-      start < imuBuffer_.earliest_time() ? imuBuffer_.earliest_time() : start;
+-  const auto endTime =
+-      end > imuBuffer_.latest_time() ? imuBuffer_.latest_time() : end;
+-  //  std::cout << "size of imu buffer: " << imuBuffer_.size() << std::endl;
++  // HMR patch: clamp BOTH endpoints into [earliest, latest]. The upstream code
++  // only clamped start up to earliest and end down to latest, so when a scan ran
++  // ahead of the newest buffered IMU (start > latest_time(): a momentary IMU
++  // gap/lag, not systematic overload) startTime stayed above latest, getRawReadings
++  // failed has(start) and the node aborted ("Missing measurement"). Clamping start
++  // down to latest (and end up to earliest) yields a degenerate window -> simply no
++  // IMU extrapolation for that one scan instead of a crash. Guard start<=end too.
++  const auto earliest = imuBuffer_.earliest_time();
++  const auto latest = imuBuffer_.latest_time();
++  auto startTime = start < earliest ? earliest : (start > latest ? latest : start);
++  auto endTime = end < earliest ? earliest : (end > latest ? latest : end);
++  if (startTime > endTime) {
++    startTime = endTime;
++  }
+   imuBuffer_.getRawReadings(startTime, endTime, &integrationBuffer_);
+ 
+   // debugging example DO NOT USE

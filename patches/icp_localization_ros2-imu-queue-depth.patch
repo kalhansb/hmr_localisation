@@ -1,0 +1,19 @@
+diff --git a/src/transform/TfPublisher.cpp b/src/transform/TfPublisher.cpp
+index b2f6434..c8db71d 100644
+--- a/src/transform/TfPublisher.cpp
++++ b/src/transform/TfPublisher.cpp
+@@ -58,8 +58,13 @@ void TfPublisher::initialize() {
+   odomSubscriber_ = nh_->create_subscription<nav_msgs::msg::Odometry>(
+       odometryTopic_, rclcpp::QoS(rclcpp::KeepLast(1)),
+       std::bind(&TfPublisher::odometryCallback, this, std::placeholders::_1));
++  // HMR patch: deep IMU queue. With a 500 Hz IMU and the single-threaded
++  // executor stalled deserializing each ~131k-point cloud, KeepLast(1) coalesces
++  // away almost all IMU samples, so the ImuInterpolationBuffer's latest time lags
++  // the scans and getRawReadings() throws ("Missing measurement"). A deep queue
++  // lets the executor drain the backlog in order after each cloud callback.
+   imuSubscriber_ = nh_->create_subscription<sensor_msgs::msg::Imu>(
+-      imuTopic_, rclcpp::QoS(rclcpp::KeepLast(1)),
++      imuTopic_, rclcpp::QoS(rclcpp::KeepLast(2000)),
+       std::bind(&TfPublisher::imuCallback, this, std::placeholders::_1));
+   tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(nh_);
+ }

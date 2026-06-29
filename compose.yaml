@@ -26,3 +26,69 @@ services:
     stdin_open: true
     tty: true
     command: bash
+
+  # ROS 2 Humble env for icp_localization_ros2 (libpointmatcher ICP). Shares the
+  # same /ws + bags mounts, but builds into install_humble/ so it never clobbers
+  # the Jazzy NDT workspace in install/. Bring up with:
+  #   docker compose up -d ros_humble
+  ros_humble:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.humble
+    image: hmr_localisation:humble
+    container_name: hmr_loc_humble
+    network_mode: host
+    ipc: host
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - RCUTILS_COLORIZED_OUTPUT=1
+      - ROS_DOMAIN_ID=0
+      - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+    volumes:
+      - ./:/ws
+      - ../bags:/ws/bags
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    working_dir: /ws
+    stdin_open: true
+    tty: true
+    command: bash
+
+  # GLIM LiDAR-IMU SLAM (koide3/glim_ros2, CUDA 13.1 / Blackwell) + SCovox, in a
+  # single ROS 2 Jazzy container. GLIM SLAM produces the live pose/TF; SCovox
+  # consumes it to build the occupancy map (no prior gt_map needed -- GLIM builds
+  # its own). Mirrors the separate-container pattern of ros_humble (ICP). Builds
+  # into install_glim/ (SCovox) so it never clobbers the other workspaces.
+  # Bring up with:
+  #   docker compose up -d glim
+  #   docker compose exec glim bash /ws/scripts/glim/run_glim_scovox.sh [dur] [rate]
+  glim:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.glim
+    image: hmr_localisation:glim
+    container_name: hmr_loc_glim
+    network_mode: host
+    ipc: host
+    # Host docker default-runtime is already nvidia, but request the GPU
+    # explicitly so this works regardless of daemon defaults. GLIM's CUDA VGICP
+    # needs the GPU; the jazzy_cuda13.1 deb has sm_120 cubins for the RTX 5070 Ti.
+    runtime: nvidia
+    gpus: all
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - RCUTILS_COLORIZED_OUTPUT=1
+      - ROS_DOMAIN_ID=0
+      - ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - ./:/ws
+      - ../bags:/ws/bags
+      - ../scovox:/scovox         # SCovox mapping workspace (built in-container for Jazzy)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    working_dir: /ws
+    stdin_open: true
+    tty: true
+    command: bash

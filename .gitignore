@@ -22,7 +22,9 @@ __pycache__/
 # --- Dear ImGui window-layout state (left over from the Iridescence/GLIM viewer) ---
 imgui.ini
 
-# --- downsampled .pcd maps generated from gt_map.ply (e.g. the 0.5 m
-#     gt_map_us050.pcd used by gt_ouster_ndt_realtime.yaml; regenerate with
-#     scripts/downsample_map_pcl.cpp). The committed .ply maps are kept. ---
+# --- downsampled .pcd maps generated from gt_map.ply (regenerate with
+#     scripts/downsample_map_pcl.cpp). The source .ply is kept, and the 0.5 m
+#     gt_map_us050.pcd default map (used by gt_ouster_ndt_realtime.yaml) is
+#     committed; the rest of the sweep stays out of the repo. ---
 gt_map/*.pcd
+!gt_map/gt_map_us050.pcd

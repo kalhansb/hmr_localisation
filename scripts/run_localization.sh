@@ -14,6 +14,10 @@ set -e
 source /opt/ros/jazzy/setup.bash
 source /ws/install/setup.bash
 cd /ws
+mkdir -p output
+# Route the multi-MB Ouster clouds over shared memory (else they throttle to ~0.1 Hz
+# over UDP loopback and the localizer sees ~8 s gaps between scans).
+export FASTRTPS_DEFAULT_PROFILES_FILE=/ws/config/fastdds_shm.xml
 
 DUR="${1:-}"
 DUR_ARG=""
@@ -30,9 +34,11 @@ echo "localizer pid=$LOC ; waiting for map load + activation..."
 until grep -aq "Activating end" /tmp/loc.log; do sleep 1; done
 echo "active. playing bag at rate 1.0 ${DUR:+(first ${DUR}s)}..."
 
-# 2) play the bag (sim clock). Only the two topics the localizer needs.
+# 2) play the bag. Force /ouster/points RELIABLE so the localizer's reliable cloud
+#    subscriber receives the scans (the bag recorded it BEST_EFFORT).
 ros2 bag play bags/2026_06_19_18_19_06__kalhan-map-test-2_ \
-  --topics /ouster/points /imu/data --clock --rate 1.0 $DUR_ARG
+  --topics /ouster/points /imu/data --clock --rate 1.0 $DUR_ARG \
+  --qos-profile-overrides-path /ws/config/ouster_reliable_qos.yaml
 
 # 3) dump the latched /path trajectory (map frame) to CSV
 python3 /ws/scripts/fetch_path.py /ws/output/path.csv

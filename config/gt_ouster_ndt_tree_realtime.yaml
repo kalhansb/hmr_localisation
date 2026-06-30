@@ -1,0 +1,62 @@
+# Real-time Mode B tree config: map -> odom -> base_link at live playback rate 1.0.
+# The REP-105 tree (map->odom from THIS localizer; odom->base_link from an external
+# robot_localization EKF, or a static identity) with IMU preintegration, tuned to keep
+# up with the 7.6 Hz sensor and never freeze on a high-residual scan:
+#     ndt_num_threads: 16                  (quality-neutral speedup vs a 4-thread default)
+#     reject_above_score_threshold: false  (do not freeze the pose on a high-residual scan)
+# Loads the light 0.5 m map (gt_map_us050.pcd) for fast startup. Run it with the EKF via
+# scripts/run_localization_tree.sh; reproduce the EKF-vs-static smoothing A/B with
+# scripts/test_ekf_smoothing.sh.
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0
+      ndt_step_size: 0.1
+      ndt_num_threads: 16          # keep up with the 7.6 Hz sensor at rate 1.0
+      ndt_max_iterations: 50
+      transform_epsilon: 0.01
+      score_threshold: 5.0
+      reject_above_score_threshold: false   # never freeze the pose on a high-residual scan
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+
+      # --- scan preprocessing (Ouster) ---
+      voxel_leaf_size: 0.2
+      scan_max_range: 100.0
+      scan_min_range: 1.0
+      scan_period: 0.1
+
+      # --- map (0.5 m downsample for fast load; regenerate with downsample_map_pcl.cpp) ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_us050.pcd"
+
+      # --- initial pose: localize base_link; seed = (base_link -> os_lidar)^-1 ---
+      set_initial_pose: true
+      initial_pose_x: 0.1105
+      initial_pose_y: 0.0
+      initial_pose_z: -0.404
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 1.0          # yaw 180 deg
+      initial_pose_qw: 0.0
+
+      # --- prediction (IMU integrated) ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: true
+      imu_preintegration_use_base_frame_transform: true
+      predict_pose_from_previous_delta: true
+
+      # --- TF output: Mode B (map -> odom); needs external odom -> base_link ---
+      enable_map_odom_tf: true
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: base_link
+
+      enable_debug: true
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0

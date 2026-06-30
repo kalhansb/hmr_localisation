@@ -1,0 +1,14 @@
+# QoS overrides for `ros2 bag play --qos-profile-overrides-path`.
+#
+# The bag recorded /ouster/points with BEST_EFFORT reliability, but the NDT
+# localizer's cloud subscriber is RELIABLE, so without this override it receives no
+# scans. Republishing /ouster/points as RELIABLE connects it. Used by
+# run_localization.sh, run_localization_tree.sh, and test_ekf_smoothing.sh.
+#
+# Volatile durability + shallow KeepLast keeps playback from blocking if a
+# subscriber falls behind (old samples are dropped rather than buffered).
+/ouster/points:
+  reliability: reliable
+  durability: volatile
+  history: keep_last
+  depth: 10

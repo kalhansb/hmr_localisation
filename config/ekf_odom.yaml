@@ -2,7 +2,7 @@
 # robot_localization EKF — continuous `odom -> base_link` for the Mode B tree
 # =======================================================================
 # Replaces the identity `odom -> base_link` static_transform_publisher that
-# run_localization_tree.sh / run_loc_scovox_tree.sh used to fake the odom layer.
+# run_localization_tree_noekf.sh uses to fake the odom layer.
 #
 # Tree (REP-105):
 #   map ──(NDT vs gt_map, lidar_localization_ros2, enable_map_odom_tf)──> odom

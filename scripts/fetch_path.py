@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Grab the latched /path (transient_local) and dump poses to CSV, then exit."""
 import csv
+import os
 import sys
 import rclpy
 from rclpy.node import Node
@@ -8,7 +9,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy, HistoryPo
 from nav_msgs.msg import Path
 
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/ws/output/path.csv"
-TOPIC = sys.argv[2] if len(sys.argv) > 2 else "/path"   # e.g. /robot1/path for multi-robot
+TOPIC = sys.argv[2] if len(sys.argv) > 2 else "/path"
 
 
 class Fetch(Node):
@@ -21,6 +22,7 @@ class Fetch(Node):
         self.create_subscription(Path, TOPIC, self.cb, qos)
 
     def cb(self, m):
+        os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
         with open(OUT, "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["stamp", "x", "y", "z", "qx", "qy", "qz", "qw"])

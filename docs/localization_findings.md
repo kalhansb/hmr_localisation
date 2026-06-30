@@ -115,7 +115,7 @@ the actual travel.
 | within 20 cm | 99.2 % |
 
 This *upper-bounds* the pose error (it includes real surface thickness/foliage).
-Reproduce with `scripts/analyze_from_bag.py` over a results bag of
+Reproduce with `scripts/analysis/analyze_from_bag.py` over a results bag of
 `/ouster/points` + `/pcl_pose`. For an absolute APE-in-metres number, export the
 GLIM trajectory (TUM) and use the package's `evo`-based tooling.
 
@@ -123,7 +123,7 @@ GLIM trajectory (TUM) and use the package's `evo`-based tooling.
 
 ## 5. Visualization
 
-- **Lightweight replay** (`scripts/replay_result.py`): publishes a
+- **Lightweight replay** (`scripts/analysis/replay_result.py`): publishes a
   voxel-downsampled map (3 M → ~196 k pts) and animates a recorded trajectory —
   no NDT, no 53 GB bag. Smooth even on software GL. → `output/rviz_replay.png`
 - **Live** (`scripts/run_viz.sh`): localizer + RViz + bag together. Heavier;

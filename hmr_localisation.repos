@@ -1,5 +1,7 @@
 # Reconstruct src/ with:  vcs import src < hmr_localisation.repos
 # (pinned to the commits this workspace was built and validated against)
+# After import, apply the NDT keep-alive memory patch (README Setup step 2):
+#   git -C src/lidar_localization_ros2 apply ../../patches/lidar_localization_ros2-keepalive-count.patch
 repositories:
   lidar_localization_ros2:
     type: git
@@ -9,22 +11,3 @@ repositories:
     type: git
     url: https://github.com/rsasaki0109/ndt_omp_ros2.git
     version: ef8a34985876359ecac7b7ad0004b6f409f6fbbc
-  # Alternative localizer (libpointmatcher ICP). Built/run in the HUMBLE container
-  # (not Jazzy). After `vcs import`, apply BOTH tracked patches:
-  #   git -C src/icp_localization_ros2 apply ../patches/icp_localization_ros2-imu-queue-depth.patch
-  #   git -C src/icp_localization_ros2 apply ../patches/icp_localization_ros2-imu-buffer-clamp.patch
-  icp_localization_ros2:
-    type: git
-    url: https://github.com/baiyeweiguang/icp_localization_ros2.git
-    version: e5062828fe1be8912873565f35537517a52ecffa
-# Third localizer: GLIM LiDAR-IMU SLAM (koide3). NOT vcs-imported -- it ships as a
-# prebuilt Docker image, so there is no src/ checkout. Built/run in its OWN Jazzy
-# container (docker/Dockerfile.glim, compose service `glim`), mirroring the
-# separate-container pattern of ICP. Base image:
-#   koide3/glim_ros2:jazzy_cuda13.1   (CUDA 13.1 -> sm_120 cubins for the RTX 5070 Ti)
-#   koide3/glim_ros2:jazzy            (CPU-only fallback; switch glim_config/config.json
-#                                      *_gpu sub-configs to *_cpu)
-# Tuned config in glim_config/ (topics + computed T_lidar_imu + headless). GLIM
-# builds its OWN map (it does not localize against gt_map); SCovox maps on top of
-# GLIM's live pose. Run: scripts/glim/run_glim_scovox.sh . See the README
-# "Alternative localizer: GLIM SLAM" section.

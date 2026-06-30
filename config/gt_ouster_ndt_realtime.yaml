@@ -20,7 +20,6 @@
 # Validation: 0.5 m map and the full 3 M-pt map (both with this config) complete
 # the entire 500 s route and agree to 37 mm mean / 58 mm p95 over the whole route,
 # including 38 mm through the hard elevated zone — i.e. both track correctly.
-# Harness + results: output/dsbench/ (runs us050_norej, full_norej).
 #
 # Frames (global/odom/base/lidar) are passed on the launch command line.
 /**:
@@ -46,7 +45,11 @@
       scan_min_range: 1.0          # drop near-field self returns
       scan_period: 0.1
 
-      # --- map (0.5 m downsampled default; see memory default-localization-map-ds05) ---
+      # --- map (0.5 m uniform-downsampled default; lightest footprint, ~3 cm
+      #     relative APE). Generate it from the committed gt_map.ply with:
+      #       ./downsample_map_pcl gt_map/gt_map.ply gt_map/gt_map_us050.pcd 0.5 uniform
+      #     (scripts/downsample_map_pcl.cpp; the .pcd is gitignored). NDT also loads
+      #     .ply directly, so map_path: "/ws/gt_map/gt_map.ply" works too (heavier). ---
       use_pcd_map: true
       map_path: "/ws/gt_map/gt_map_us050.pcd"
 

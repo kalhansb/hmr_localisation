@@ -1,6 +1,6 @@
 """Continuous `odom -> base_link` estimator for the Mode B (map->odom->base_link)
 TF tree -- the robot_localization replacement for the identity
-static_transform_publisher in run_localization_tree.sh / run_loc_scovox_tree.sh.
+static_transform_publisher in run_localization_tree_noekf.sh.
 
 Brings up two processes:
   * ndt_pose_relay.py    -- restamp /pcl_pose (map) -> /pcl_pose_odom (odom),
@@ -10,7 +10,7 @@ Brings up two processes:
                             pose + /imu/data angular velocity and broadcast
                             odom -> base_link.
 
-Invoked by path (no colcon package needed), matching multi_robot_localization:
+Invoked by path (no colcon package needed):
   ros2 launch /ws/launch/ekf_odom.launch.py use_sim_time:=true
 """
 from launch import LaunchDescription

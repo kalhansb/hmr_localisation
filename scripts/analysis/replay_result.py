@@ -4,7 +4,7 @@ Publishes a voxel-downsampled GT map (once, latched) and animates the recorded
 trajectory: /pcl_pose, growing /path, and the map->os_lidar TF. No NDT, no bag.
 
 Usage (in container):
-  ros2 run ... no -- just: python3 scripts/replay_result.py [path_csv] [voxel_m] [rate_hz]
+  ros2 run ... no -- just: python3 scripts/analysis/replay_result.py [path_csv] [voxel_m] [rate_hz]
 """
 import sys, csv
 import numpy as np

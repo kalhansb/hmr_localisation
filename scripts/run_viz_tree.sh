@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Live RViz: localization with the PROPER REP-105 TF tree (map->odom->base_link)
-# and the robot_localization EKF odom layer -- WITHOUT scovox mapping.
-# (= run_loc_scovox_tree.sh minus the scovox node; = run_viz.sh but Mode B + EKF.)
+# and the robot_localization EKF odom layer.
+# (= run_viz.sh but Mode B + EKF.)
 #
 #   map ──(NDT vs gt_map)──> odom ──(robot_localization EKF)──> base_link ──┬──> os_lidar
 #                                                                           └──> imu
@@ -42,7 +42,7 @@ ros2 launch /ws/launch/ekf_odom.launch.py use_sim_time:=true > /tmp/ekf_odom.log
 PIDS+=($!)
 
 # 2) localizer, Mode B (map->odom), base frame base_link. IMU preintegration OFF
-#    (matches run_loc_scovox_tree.sh); the launch's static publishers emit
+#    by default; the launch's static publishers emit
 #    base_link->os_lidar and base_link->imu to complete the tree.
 ros2 launch lidar_localization_ros2 lidar_localization.launch.py \
   localization_param_dir:=$CONFIG \

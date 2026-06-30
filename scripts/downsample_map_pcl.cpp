@@ -1,11 +1,11 @@
 // Voxel-downsample a localization map cloud (x,y,z,intensity) using PCL's own
-// filters, as an alternative to the pure-numpy scripts/downsample_map.py.
+// filters. Produces the lighter .pcd map that gt_ouster_ndt_realtime.yaml loads.
 //
 //   voxel   (default) -> pcl::VoxelGrid       : one CENTROID (averaged synthetic
 //                                                point) per occupied voxel.
 //   uniform           -> pcl::UniformSampling : keeps the REAL input point closest
 //                                                to each voxel centre (no averaging;
-//                                                matches downsample_map.py semantics).
+//                                                keeps real points, not centroids).
 //
 // VoxelGrid indexes voxels with int32, so on a building-scale map a very small
 // leaf overflows (dx*dy*dz > INT32_MAX): PCL then returns the cloud UNFILTERED.

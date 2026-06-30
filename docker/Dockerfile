@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-jazzy-pcl-conversions \
         ros-jazzy-pcl-ros \
         ros-jazzy-pybind11-vendor \
-        ros-jazzy-robot-localization \
     && rm -rf /var/lib/apt/lists/*
 
 # rosdep is pre-initialized in osrf images; just refresh the cache.

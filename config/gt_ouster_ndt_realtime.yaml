@@ -1,6 +1,6 @@
 # Real-time NDT localization config — runs the full route at live playback rate 1.0
-# (Ouster ~7.6 Hz) without diverging. Derived from gt_ouster_ndt.yaml; only TWO
-# parameters change vs that base, and both were validated empirically:
+# (Ouster ~7.6 Hz) without diverging. Two parameters (vs a stock NDT setup) carry
+# the recipe, and both were validated empirically:
 #
 #   1) ndt_num_threads: 4 -> 16
 #      NDT_OMP parallelizes the per-point gradient/Hessian accumulation across

@@ -1,0 +1,77 @@
+# Real-time NDT localization config — runs the full route at live playback rate 1.0
+# (Ouster ~7.6 Hz) without diverging. Derived from gt_ouster_ndt.yaml; only TWO
+# parameters change vs that base, and both were validated empirically:
+#
+#   1) ndt_num_threads: 4 -> 16
+#      NDT_OMP parallelizes the per-point gradient/Hessian accumulation across
+#      threads with ZERO effect on the result — pure speedup on the 24-core host.
+#      Lifts throughput from ~3.2 Hz (could not keep up, skipped scans, drifted)
+#      to ~7.6 Hz so every live scan is processed. Free, no accuracy cost.
+#
+#   2) reject_above_score_threshold: true -> false
+#      The bag has an elevated stretch (~325-420 s, z climbs to +3.5 m) where the
+#      live scan has many points that match no map surface, so NDT *fitness* spikes
+#      to 30-45 even though the *pose* is correct. With the reject gate ON, those
+#      high-residual scans were dropped -> pose frozen while the robot moved ->
+#      permanent divergence at ~340 s. With the gate OFF the localizer keeps
+#      applying NDT's (correct) estimate and rides straight through; fitness then
+#      recovers to ~0 afterwards, proving the pose stayed locked.
+#
+# Validation: 0.5 m map and the full 3 M-pt map (both with this config) complete
+# the entire 500 s route and agree to 37 mm mean / 58 mm p95 over the whole route,
+# including 38 mm through the hard elevated zone — i.e. both track correctly.
+# Harness + results: output/dsbench/ (runs us050_norej, full_norej).
+#
+# Frames (global/odom/base/lidar) are passed on the launch command line.
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0          # wider NDT basin -> recovers from rough seed at turns
+      ndt_step_size: 0.1
+      ndt_num_threads: 16          # (1) keep up with the 7.6 Hz sensor; quality-neutral
+      ndt_max_iterations: 50       # 50 still fits in the per-scan budget at 16 threads
+      transform_epsilon: 0.01
+      score_threshold: 5.0         # kept only for the "fitness over N" WARN log line
+      reject_above_score_threshold: false   # (2) never freeze on a high-residual stretch
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+
+      # --- scan preprocessing (Ouster) ---
+      voxel_leaf_size: 0.2         # downsample input scan (m)
+      scan_max_range: 100.0
+      scan_min_range: 1.0          # drop near-field self returns
+      scan_period: 0.1
+
+      # --- map (0.5 m downsampled default; see memory default-localization-map-ds05) ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_us050.pcd"
+
+      # --- initial pose (GLIM map origin == first frame, so identity is the seed) ---
+      set_initial_pose: true
+      initial_pose_x: 0.0
+      initial_pose_y: 0.0
+      initial_pose_z: 0.0
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 0.0
+      initial_pose_qw: 1.0         # NOTE: repo default is 0.0 (invalid); identity needs qw=1
+
+      # --- prediction ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: false
+      predict_pose_from_previous_delta: true
+
+      # --- TF output ---
+      enable_map_odom_tf: false    # publish map -> base_link directly
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: os_lidar
+
+      enable_debug: true
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0

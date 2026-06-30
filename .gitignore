@@ -4,6 +4,13 @@ output/acc_bag/
 output/*.mcap
 output/*.npz
 
+# --- dsbench: keep the harness scripts + result plots/summaries, drop the bulky
+#     per-run artifacts (CSVs/logs), generated per-run configs, and compiled binary ---
+output/dsbench/runs/
+output/dsbench/cfg/
+output/dsbench/bin/
+output/dsbench/*.log
+
 # --- third-party ROS sources (reconstruct with: vcs import src < hmr_localisation.repos) ---
 src/
 

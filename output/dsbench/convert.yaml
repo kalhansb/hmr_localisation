@@ -1,0 +1,5 @@
+output_bags:
+  - uri: /ws/bags/maptest2_ouster
+    storage_id: mcap
+    all_topics: false
+    topics: [/ouster/points]

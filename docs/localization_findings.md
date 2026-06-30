@@ -23,8 +23,16 @@ types are needed from the bag, so cross-distro concerns don't apply.
 - `/ouster/points` — `sensor_msgs/PointCloud2`, frame **`os_lidar`** (OS-128, 1024 wide), **best-effort** QoS
 - `/imu/data` — `sensor_msgs/Imu`, frame `imu`, ~500 Hz
 - `/fix` — GPS, frame `gps` (≈20 m std-dev — not RTK)
-- `/tf_static` — **camera-only** (no `base_link → os_lidar` extrinsic)
-- `/tf` — `base_link → wheels` only
+- `/tf_static` — **3 latched messages = the FULL robot static tree**, not just the
+  camera. It contains `base_link → {os_sensor→os_lidar, camera_link→camera_color_frame
+  →camera_color_optical_frame, imu_link, gps, …}`. ⚠️ Reading only ONE message
+  (`ros2 topic echo --once`, or a non-`transient_local` listener) shows only the
+  RealSense-internal subset — that is the mistake behind the old "camera-only" claim.
+  Verified values (`tf2_echo`, 2026-06-29): `base_link→os_lidar` = t(0.111,0,0.404),
+  yaw 180°; `base_link→camera_color_optical_frame` = t(0.271,0.049,0.279); and the
+  derived LiDAR↔camera extrinsic `os_lidar→camera_color_optical_frame` =
+  t(-0.160,-0.049,-0.125). So the camera/LiDAR extrinsic IS available from the bag.
+- `/tf` — dynamic `base_link → wheels` joints (odometry-style)
 
 ---
 
@@ -38,11 +46,19 @@ types are needed from the bag, so cross-distro concerns don't apply.
 - **PLY loads directly.** The node detects the extension and uses
   `pcl::io::loadPLYFile` — no PLY→PCD conversion. The map's binary-LE-float32
   layout is exactly what it expects.
-- **Frames.** Because the bag has no `base_link → os_lidar` transform, we
-  localize the **`os_lidar` frame directly** (`base_frame_id:=os_lidar
-  lidar_frame_id:=os_lidar publish_lidar_tf:=false`). The GLIM map is built in
-  the lidar frame, so the **identity initial pose is correct** (the node's
-  default `initial_pose_qw: 0.0` is an invalid quaternion — set to `1.0`).
+- **Frames.** ⚠️ **CORRECTION (2026-06-29):** the bag's `/tf_static` DOES contain
+  `base_link → os_lidar` plus the full camera chain (see §1) — the earlier "camera-only"
+  reading was an artifact of inspecting a single `tf_static` message. The text below is
+  retained for history but is **superseded**: prefer localizing down to **`base_link`**
+  (rely on the bag's `base_link→os_lidar`) so the entire sensor tree — including the
+  RealSense camera — resolves in `map`. Do NOT publish `map→os_lidar` directly, and do
+  NOT add a duplicate `base_link→os_lidar` static_tf (it would give `os_lidar` two
+  parents and break the tree). This is what makes RGB-D + LiDAR fusion possible without
+  any measured extrinsic.
+  - *(superseded)* Because the bag was thought to lack a `base_link → os_lidar`
+    transform, earlier runs localized the **`os_lidar` frame directly**
+    (`base_frame_id:=os_lidar lidar_frame_id:=os_lidar publish_lidar_tf:=false`); the
+    node's default `initial_pose_qw: 0.0` is an invalid quaternion — set to `1.0`.
 - **Map units.** Local metric coordinates (~230 m span), not UTM, despite GPS
   being present.
 

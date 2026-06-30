@@ -179,6 +179,28 @@ python3 scripts/analysis/analyze_from_bag.py gt_map/gt_map.ply output/acc_bag   
 docker compose stop      # keep container   |   docker compose down  # remove it
 ```
 
+### Run on a Jetson (Docker)
+Same repo, same pinned NDT sources ([`hmr_localisation.repos`](hmr_localisation.repos):
+`lidar_localization_ros2` + `ndt_omp_ros2`). NDT_OMP is **CPU-only**, so no CUDA is
+needed — the `osrf/ros:jazzy-*` base in [`docker/Dockerfile`](docker/Dockerfile) is
+multi-arch and pulls the `arm64` layer when you `docker compose build` **on the
+Jetson** (JetPack 6 / L4T r36, Ubuntu 24.04). Setup/build/run are otherwise
+identical to above (the `ros` service in [`compose.yaml`](compose.yaml)) — including
+the NDT keep-alive memory patch
+([`patches/lidar_localization_ros2-keepalive-count.patch`](patches/), `4096 → 4`,
+applied in Setup step 2), which matters most on the memory-constrained Jetson: the
+upstream default retains ~every registration cloud and grows RAM unboundedly.
+
+Two Jetson-specific things:
+- **Config:** use [`config/gt_ouster_ndt_tree_jetson.yaml`](config/gt_ouster_ndt_tree_jetson.yaml)
+  (point `localization_param_dir` in [`scripts/run_localization_tree.sh`](scripts/run_localization_tree.sh)
+  at it). It is the Mode B tree config tuned to leave CPU headroom for a co-resident
+  Nav2 + SCovox + planner stack: lighter 0.2 m map, crop radius 60 m, `enable_debug`
+  off — and **set `ndt_num_threads` for your board** (Orin Nano → 2, Orin NX → 3,
+  AGX Orin → 4–6).
+- **Map:** it loads the 0.2 m-downsampled `gt_map/gt_map_ds.ply` (~1/3 the points);
+  regenerate with `python3 scripts/downsample_map.py gt_map/gt_map.ply gt_map/gt_map_ds.ply 0.2`.
+
 ---
 
 ## Alternative localizer: ICP (libpointmatcher, Humble)

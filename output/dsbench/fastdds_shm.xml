@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Same-host transport for multi-MB Ouster PointCloud2: send data over Shared
+     Memory (no kernel UDP-buffer limit), keep a UDPv4 transport only so builtin
+     multicast discovery still works on loopback. Avoids the ~208KB
+     net.core.rmem_max cap that throttles big clouds to ~0.4Hz over UDP. -->
+<dds>
+  <profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+    <transport_descriptors>
+      <transport_descriptor>
+        <transport_id>shm_transport</transport_id>
+        <type>SHM</type>
+        <segment_size>268435456</segment_size>        <!-- 256 MB SHM segment -->
+        <port_queue_capacity>512</port_queue_capacity>
+      </transport_descriptor>
+      <transport_descriptor>
+        <transport_id>udp_transport</transport_id>
+        <type>UDPv4</type>
+      </transport_descriptor>
+    </transport_descriptors>
+    <participant profile_name="shm_first_participant" is_default_profile="true">
+      <rtps>
+        <userTransports>
+          <transport_id>shm_transport</transport_id>
+          <transport_id>udp_transport</transport_id>
+        </userTransports>
+        <useBuiltinTransports>false</useBuiltinTransports>
+      </rtps>
+    </participant>
+  </profiles>
+</dds>

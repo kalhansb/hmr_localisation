@@ -48,6 +48,34 @@ The run script sets the **SHM transport** ([`config/fastdds_shm.xml`](config/fas
 subscribes RELIABLE but the bag recorded `/ouster/points` BEST_EFFORT). Trajectory →
 `output/path.csv`.
 
+## Real robot (live sensors, Docker)
+
+Same container, no bag: the Ouster driver + IMU publish live and the tree runs
+on wall clock. `compose.yaml` pins DDS discovery to loopback — exec with
+`ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET` when the sensors (or teammate robots)
+are on the network.
+
+```bash
+docker compose up -d
+docker compose exec -e ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET ros \
+  bash /ws/scripts/run_localization_live.sh
+```
+
+[`scripts/run_localization_live.sh`](scripts/run_localization_live.sh) is the
+bag pipeline minus playback: EKF ([`config/ekf_odom.yaml`](config/ekf_odom.yaml))
++ NDT localizer ([`config/gt_ouster_ndt_tree_realtime.yaml`](config/gt_ouster_ndt_tree_realtime.yaml))
+with `use_sim_time:=false`. Two live-only gotchas: the localizer subscribes
+`/ouster/points` RELIABLE, so the driver must publish RELIABLE (best-effort
+won't match); and the static `base_link → {os_lidar, imu}` extrinsics baked
+into the script are the map-test robot's — re-measure for another platform.
+
+**Multi-robot mapping** builds on this tree: every robot runs this localizer
+against the *same* `gt_map`, so all robots share one global `map` frame; the
+SCovox mappers integrate in per-robot frames pinned to `map` by identity
+static TFs, and each robot's DSCovox fuses all peers' streams with no
+per-scan cross-robot `/tf`. See the scovox README, "Multi-robot mapping",
+and `distributed_mapping.md` in the parent HMR_Explo workspace.
+
 ## Does robot_localization + IMU smooth the trajectory?
 A/B over 60 s at 50 Hz (reproduce: `scripts/test_ekf_smoothing.sh ekf|noekf`, then
 `scripts/analysis/analyze_smoothing.py`):

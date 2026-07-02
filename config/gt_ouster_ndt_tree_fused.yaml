@@ -1,0 +1,81 @@
+# NDT config for the FUSED LiDAR+RGB-D mapping experiment
+# (HMR_Explo/ws/src/run_fused_experiment.sh). Params are identical to the
+# validated gt_ouster_ndt_tree_realtime.yaml (real-time Mode B tree at rate 1.0);
+# what differs is the LAUNCH wiring, recorded here because it can't live in a
+# params file:
+#
+#   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
+#     localization_param_dir:=/ws/config/gt_ouster_ndt_tree_fused.yaml
+#     cloud_topic:=/ouster/points imu_topic:=/imu/data use_sim_time:=true
+#     publish_lidar_tf:=false publish_imu_tf:=false
+#
+# publish_lidar_tf/publish_imu_tf:=false → NDT does map->odom ONLY and does NOT
+# broadcast the sensor legs; standalone static_transform_publishers own them
+# (values read from the bag's /tf_static — we do NOT play /tf_static: its
+# base_link->camera_link is an uncalibrated identity, and playing it would
+# double-parent os_lidar against the live tree):
+#   base_link -> os_lidar           : x 0.1105  y 0 z 0.404   quat(0,0,1,0)  (yaw pi)
+#   base_link -> imu                : x 0.062   y 0 z 0.015   quat(0,0,0.7071068,0.7071068)
+#                                     (/imu/data frame_id is "imu", NOT the bag's "imu_link")
+#   base_link -> camera_color_frame : x 0.270676 y 0.049297 z 0.279109
+#                                     quat(-0.013514, 0.000986, 0.000780, 0.999908)
+#                                     (CALIBRATED; collapsed from the bag's
+#                                      os_lidar->camera_color_optical_frame leg)
+#
+# NDT still CONSUMES base_link<-os_lidar / base_link<-imu from TF
+# (lidar_localization_component.cpp:1786 / :1395 lookupTransform), so those
+# statics must be up before scans arrive. odom->base_link comes from the
+# robot_localization EKF (launch/ekf_odom.launch.py, config/ekf_odom.yaml).
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0
+      ndt_step_size: 0.1
+      ndt_num_threads: 16          # keep up with the 7.6 Hz sensor at rate 1.0
+      ndt_max_iterations: 50
+      transform_epsilon: 0.01
+      score_threshold: 5.0
+      reject_above_score_threshold: false   # never freeze the pose on a high-residual scan
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+
+      # --- scan preprocessing (Ouster) ---
+      voxel_leaf_size: 0.2
+      scan_max_range: 100.0
+      scan_min_range: 1.0
+      scan_period: 0.1
+
+      # --- map (0.5 m downsample for fast load; regenerate with downsample_map_pcl.cpp) ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_us050.pcd"
+
+      # --- initial pose: localize base_link; seed = (base_link -> os_lidar)^-1 ---
+      set_initial_pose: true
+      initial_pose_x: 0.1105
+      initial_pose_y: 0.0
+      initial_pose_z: -0.404
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 1.0          # yaw 180 deg
+      initial_pose_qw: 0.0
+
+      # --- prediction (IMU integrated) ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: true
+      imu_preintegration_use_base_frame_transform: true
+      predict_pose_from_previous_delta: true
+
+      # --- TF output: Mode B (map -> odom); needs external odom -> base_link ---
+      enable_map_odom_tf: true
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: base_link
+
+      enable_debug: true
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0

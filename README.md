@@ -73,8 +73,9 @@ into the script are the map-test robot's — re-measure for another platform.
 against the *same* `gt_map`, so all robots share one global `map` frame; the
 SCovox mappers integrate in per-robot frames pinned to `map` by identity
 static TFs, and each robot's DSCovox fuses all peers' streams with no
-per-scan cross-robot `/tf`. See the scovox README, "Multi-robot mapping",
-and `distributed_mapping.md` in the parent HMR_Explo workspace.
+per-scan cross-robot `/tf`. Full runbook:
+[`docs/distributed_mapping.md`](https://github.com/kalhansb/scovox/blob/main/docs/distributed_mapping.md)
+in the scovox repo.
 
 ## Does robot_localization + IMU smooth the trajectory?
 A/B over 60 s at 50 Hz (reproduce: `scripts/test_ekf_smoothing.sh ekf|noekf`, then

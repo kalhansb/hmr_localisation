@@ -63,12 +63,11 @@ echo "active. playing bag at rate 1.0 ${DUR:+(first ${DUR}s)}..."
     --ros-args -p use_sim_time:=true >> /tmp/tf_chain.log 2>&1 || true ) &
 PIDS+=($!)
 
-# 4) play the bag. Force /ouster/points RELIABLE so the localizer's reliable cloud
-#    subscriber receives the scans (the bag recorded it BEST_EFFORT). The TF tree
-#    comes from our publishers, not the bag's /tf.
+# 4) play the bag. The localizer's cloud subscriber is best-effort (SensorDataQoS),
+#    matching the bag's recorded /ouster/points and the real robot's driver. The TF
+#    tree comes from our publishers, not the bag's /tf.
 ros2 bag play bags/2026_06_19_18_19_06__kalhan-map-test-2_ \
-  --topics /ouster/points /imu/data --clock --rate 1.0 $DUR_ARG \
-  --qos-profile-overrides-path /ws/config/ouster_reliable_qos.yaml
+  --topics /ouster/points /imu/data --clock --rate 1.0 $DUR_ARG
 
 # 5) dump the latched /path trajectory (map frame) to CSV
 python3 /ws/scripts/fetch_path.py /ws/output/path.csv

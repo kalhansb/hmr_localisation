@@ -3,9 +3,9 @@
 #   map ──(NDT vs gt_map)──> odom ──(EKF: NDT pose + IMU gyro)──> base_link ──> {os_lidar, imu}
 #
 # Expects the Ouster driver + IMU publishing /ouster/points + /imu/data on the
-# live DDS graph. NOTE: the localizer subscribes /ouster/points RELIABLE —
-# configure the driver to publish RELIABLE (a best-effort publisher will not
-# match; the bag runs needed the same override).
+# live DDS graph. The localizer subscribes /ouster/points best-effort
+# (SensorDataQoS), so the Ouster driver's default best-effort output matches
+# directly — no QoS reconfiguration needed on the robot.
 #
 # Usage (HOST):
 #   docker compose up -d

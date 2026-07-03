@@ -74,11 +74,10 @@ PIDS+=($!)
 sleep 2
 
 # 4) play the bag (only the two topics the localizer needs; our static pubs own the
-#    tree). Force /ouster/points RELIABLE so the localizer's reliable cloud
-#    subscriber actually receives the scans (the bag recorded it BEST_EFFORT).
+#    tree). The localizer's cloud subscriber is best-effort (SensorDataQoS), matching
+#    the bag's recorded /ouster/points and the real robot's driver.
 ros2 bag play bags/2026_06_19_18_19_06__kalhan-map-test-2_ \
-  --topics /ouster/points /imu/data --clock --rate 1.0 --playback-duration "$DUR" \
-  --qos-profile-overrides-path /ws/config/ouster_reliable_qos.yaml
+  --topics /ouster/points /imu/data --clock --rate 1.0 --playback-duration "$DUR"
 
 sleep 1
 echo "[$MODE] done. good_scans=$(grep -ac 'fitness score:' /tmp/loc_$MODE.log) rejects=$(grep -ac 'fitness score is over' /tmp/loc_$MODE.log) map_samples=$(($(wc -l < /ws/output/tf_${MODE}_map.csv) - 1)) odom_samples=$(($(wc -l < /ws/output/tf_${MODE}_odom.csv) - 1))"

@@ -23,8 +23,15 @@ __pycache__/
 imgui.ini
 
 # --- downsampled .pcd maps generated from gt_map.ply (regenerate with
-#     scripts/downsample_map_pcl.cpp). The source .ply is kept, and the 0.5 m
-#     gt_map_us050.pcd default map (used by gt_ouster_ndt_realtime.yaml) is
-#     committed; the rest of the sweep stays out of the repo. ---
+#     scripts/downsample_map_pcl.cpp). The source .ply is kept, and the coarse
+#     0.5-2.0 m uniform-voxel sweep (gt_map_us050 is the gt_ouster_ndt_realtime
+#     default; us060-us200 are the lighter coarser maps) is committed. Finer
+#     maps below 0.5 m stay out of the repo -- regenerate them from the .ply. ---
 gt_map/*.pcd
 !gt_map/gt_map_us050.pcd
+!gt_map/gt_map_us060.pcd
+!gt_map/gt_map_us070.pcd
+!gt_map/gt_map_us080.pcd
+!gt_map/gt_map_us100.pcd
+!gt_map/gt_map_us150.pcd
+!gt_map/gt_map_us200.pcd

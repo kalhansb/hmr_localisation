@@ -26,9 +26,9 @@ map ──(NDT vs gt_map)──> odom ──(robot_localization EKF: NDT pose + 
 The rosbag lives **beside** the repo (not in git, ~53 GB):
 `../bags/2026_06_19_18_19_06__kalhan-map-test-2_/` (mounted at `/ws/bags`).
 ```bash
-# build once: fetch the pinned NDT sources + patch, build image + workspace, make the 0.5 m map
+# build once: fetch the pinned NDT sources (lidar_localization_ros2 is our fork,
+# HMR changes already baked in), build image + workspace, make the 0.5 m map
 vcs import src < hmr_localisation.repos
-git -C src/lidar_localization_ros2 apply ../../patches/lidar_localization_ros2-keepalive-count.patch
 docker compose build && docker compose up -d
 docker compose exec ros bash -lc 'source /opt/ros/jazzy/setup.bash && cd /ws &&
   rosdep install --from-paths src --ignore-src -r -y &&

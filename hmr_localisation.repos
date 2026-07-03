@@ -1,12 +1,13 @@
 # Reconstruct src/ with:  vcs import src < hmr_localisation.repos
 # (pinned to the commits this workspace was built and validated against)
-# After import, apply the NDT keep-alive memory patch (README Setup step 2):
-#   git -C src/lidar_localization_ros2 apply ../../patches/lidar_localization_ros2-keepalive-count.patch
+# lidar_localization_ros2 is our fork (kalhansb) of rsasaki0109's package; HMR
+# changes live there directly (e.g. bounded NDT registration-cloud keep-alive),
+# so no post-import patch step is needed. Upstream: rsasaki0109/lidar_localization_ros2.
 repositories:
   lidar_localization_ros2:
     type: git
-    url: https://github.com/rsasaki0109/lidar_localization_ros2.git
-    version: 0fe85a563b6d83641d09550d14cc4981ad0f5a97
+    url: https://github.com/kalhansb/hmr_localisation_ros2.git
+    version: 5fe304c14c47cfebfdf4626cf91aa6efd57b6247
   ndt_omp_ros2:
     type: git
     url: https://github.com/rsasaki0109/ndt_omp_ros2.git

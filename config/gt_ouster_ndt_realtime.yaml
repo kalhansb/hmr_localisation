@@ -38,6 +38,13 @@
       enable_local_map_crop: true
       local_map_radius: 80.0
       local_map_min_points: 100
+      # Cache the cropped NDT target: crop at radius+20m and only rebuild after
+      # the pose moves 20m (~one rebuild per 10-20s instead of 7.6/s; the NDT
+      # covariance grid + kd-tree init dominate the per-scan CPU on Jetson).
+      local_map_refresh_distance: 20.0
+      # Map is already 0.5m-downsampled, so voxel-filtering the crop at 0.2m
+      # was a no-op pass; 0.0 skips it and uses the raw crop as the target.
+      local_map_voxel_leaf_size: 0.0
 
       # --- scan preprocessing (Ouster) ---
       voxel_leaf_size: 0.2         # downsample input scan (m)
@@ -75,6 +82,11 @@
       odom_frame_id: odom
       base_frame_id: os_lidar
 
-      enable_debug: true
+      enable_debug: false          # per-scan stdout costs real time on Jetson
       enable_timer_publishing: false
       pose_publish_frequency: 30.0
+
+      # --- outputs: only the pose/TF stream is consumed downstream ---
+      publish_initial_map: false   # don't retain/ship the map on transient_local
+      enable_path_publishing: false  # full-path republish per scan grows unbounded
+      path_max_poses: 1000         # bound if path publishing is ever re-enabled

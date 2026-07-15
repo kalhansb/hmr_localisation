@@ -1,24 +1,16 @@
 # Reconstruct src/ with:  vcs import src < hmr_localisation.repos
 # (pinned to the commits this workspace was built and validated against)
 #
-# lidar_localization_ros2 and icp_localization_ros2 are our forks (kalhansb) of
-# their respective upstreams; HMR changes live directly on the forks, so there is
-# no post-import patch step. ndt_omp_ros2 is pinned straight to upstream.
+# lidar_localization_ros2 is our fork (kalhansb) of the upstream; HMR changes live
+# directly on the fork, so there is no post-import patch step. ndt_omp_ros2 is
+# pinned straight to upstream.
 #   lidar_localization_ros2 <- rsasaki0109   (bounded NDT registration-cloud keep-alive;
 #                              cached cropped NDT target + gated map/path outputs)
-#   icp_localization_ros2   <- baiyeweiguang (IMU integration-window guard, deep IMU
-#                              subscription queue, ICP timing logs). This is the legacy
-#                              ICP localizer that runs in the separate Humble container;
-#                              main is NDT-only, so the NDT run scripts don't build it.
 repositories:
   lidar_localization_ros2:
     type: git
     url: https://github.com/kalhansb/lidar_localization_ros2.git
     version: c1e582a60ad74275bd343f134ac343f60add0439
-  icp_localization_ros2:
-    type: git
-    url: https://github.com/kalhansb/icp_localization_ros2.git
-    version: 57fbb0e748848572a57c3e75bde767094eac4f34
   ndt_omp_ros2:
     type: git
     url: https://github.com/rsasaki0109/ndt_omp_ros2.git

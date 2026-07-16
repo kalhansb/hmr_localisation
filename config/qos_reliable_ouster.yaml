@@ -1,0 +1,11 @@
+# rosbag2 playback QoS override for the curt coop bag.
+# curt's /ouster/points was recorded BEST_EFFORT, but the NDT localizer (and the
+# scovox mapper) subscribe RELIABLE, so without this override they never connect
+# and every scan is silently dropped. Pass to `ros2 bag play` with
+#   --qos-profile-overrides-path /ws/config/qos_reliable_ouster.yaml
+# (bunker's /hesai/points is already reliable and needs no override.)
+/ouster/points:
+  reliability: reliable
+  durability: volatile
+  history: keep_last
+  depth: 10

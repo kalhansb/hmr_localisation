@@ -1,0 +1,71 @@
+# =======================================================================
+# robot_localization EKF — continuous `odom -> base_link` for the Mode B tree
+# =======================================================================
+# Fork of ekf_odom.yaml for the 2026_06_29 "go1_kalhan_coop_2" bag (Unitree Go1
+# + Hesai LiDAR, SAME coop environment / gt_map as the curt bag). Unlike the curt
+# bag this stack keeps the stock `base_link` frame, because the Go1 URDF already
+# publishes the full static chain on /tf_static:
+#
+#   base_link --(Rz 90)--> trunk --> hesai --> hesai_lidar   (LiDAR cloud frame)
+#                                \--> imu                     (/imu/data frame)
+#
+# base_link is the bag's TF ROOT (no odom->base_link in the bag), so broadcasting
+# map->odom (NDT) + odom->base_link (this EKF) does NOT collide with replay.
+#
+# IMU: /imu/data (frame "imu", the near-level body IMU). Fuse angular velocity
+# only; the gyro is rotated into base_link via the static base_link->..->imu TF,
+# so it is valid whether or not /imu/data carries a fused orientation quaternion.
+# (The LiDAR's own /hesai/imu is reserved for mapper deskew — see the mapper cmd.)
+#
+# Tree (REP-105):
+#   map ──(NDT vs gt_map, lidar_localization_ros2)──> odom
+#   odom ──(THIS EKF: NDT pose + /imu/data)──────────> base_link
+#   base_link ──(bag /tf_static)──> trunk -> hesai -> hesai_lidar, imu
+# =======================================================================
+
+ekf_filter_node:
+  ros__parameters:
+    # use_sim_time is set by launch/ekf_odom.launch.py (true for bag replay).
+
+    frequency: 50.0            # odom->base broadcast rate (> NDT, < IMU)
+    sensor_timeout: 0.2        # coast on the motion model if a source stalls
+    two_d_mode: false          # legged robot has roll/pitch/z -> full 3D
+    publish_tf: true           # broadcast odom -> base_link
+    publish_acceleration: false
+
+    transform_time_offset: 0.0
+    transform_timeout: 0.0
+    print_diagnostics: true
+    debug: false
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link       # <-- Go1 stock base frame
+    world_frame: odom          # -> EKF estimates & broadcasts odom -> base_link
+
+    # --- NDT global pose, restamped to the odom frame by ndt_pose_relay.py -----
+    pose0: /pcl_pose_odom
+    pose0_config: [true,  true,  true,
+                   true,  true,  true,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose0_differential: false
+    pose0_relative: false
+    pose0_queue_size: 10
+    pose0_rejection_threshold: 6.0
+    pose0_nodelay: false
+
+    # --- IMU (/imu/data, frame "imu") -----------------------------------------
+    # Fuse angular velocity only (vroll, vpitch, vyaw). Gyro is rotated into
+    # base_link via the static base_link->trunk->imu TF.
+    imu0: /imu/data
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  true,  true,  true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 50
+    imu0_remove_gravitational_acceleration: true

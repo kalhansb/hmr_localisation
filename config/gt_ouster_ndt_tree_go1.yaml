@@ -1,0 +1,99 @@
+# NDT config for the 2026_06_29 "go1_kalhan_coop_2" bag (Unitree Go1 + Hesai
+# LiDAR) over the SAME gt_map as the curt/map-test-2 bags. Fork of
+# gt_ouster_ndt_tree_curt.yaml. What differs from the curt bag:
+#
+#   1. LiDAR is a Hesai on /hesai/points (frame hesai_lidar), NOT Ouster. The
+#      per-point time field is `timestamp` FLOAT64 (absolute) — the scovox mapper
+#      already decodes that; the NDT node only needs xyz so it is agnostic.
+#   2. base_frame_id stays the stock `base_link` — the Go1 URDF publishes the full
+#      static chain on /tf_static, and base_link is the bag's TF ROOT (no
+#      odom->base_link in the bag), so Mode B doesn't collide with replay:
+#        base_link --(Rz 90)--> trunk --> hesai --(Rz 114.6)--> hesai_lidar
+#                                    \--> imu   (/imu/data, near-level body IMU)
+#   3. The Hesai is mounted LEVEL — the physical scan plane is horizontal
+#      (verified: raw-cloud PCA disk-normal, pushed through base_link<-hesai_lidar,
+#      lands 9.4 deg off gravity = level within standing-pose noise). What looks
+#      like a tilt is only the hesai_lidar FRAME's rolled axis convention: its +Z
+#      points sideways (along base +Y) and +Y is the near-up axis. NDT is agnostic
+#      to that because base_frame_id=base_link is level and the cloud->base TF
+#      (from /tf_static) carries the frame rotation. Initial pose below is LEVEL.
+#
+# Sensor wiring — all from the bag's /tf_static, so play /tf_static on replay:
+#   base_link -> trunk           : xyz(0,0,0)          q(0,0,0.7068,0.7074)  Rz +90
+#   trunk     -> hesai           : xyz(0.175,-0.020,0.189) q(0,0.7068,0,0.7074) Ry +90
+#   hesai     -> hesai_lidar     : xyz(0,0,0)          q(0,0,0.8415,0.5403)  Rz +114.6
+#   trunk     -> imu             : xyz(0.115,-0.008,0.269) q(0,0,0.7068,0.7074) Rz +90
+#
+# Launch (see doc/dscovox_exploration_run.md, go1-bag variant):
+#   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
+#     localization_param_dir:=/ws/config/gt_ouster_ndt_tree_go1.yaml
+#     cloud_topic:=/hesai/points imu_topic:=/imu/data use_sim_time:=true
+#     base_frame_id:=base_link
+#     publish_lidar_tf:=false publish_imu_tf:=false
+#
+# odom -> base_link comes from the EKF (config/ekf_odom_go1.yaml).
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0
+      ndt_step_size: 0.1
+      ndt_num_threads: 16
+      ndt_max_iterations: 50
+      transform_epsilon: 0.01
+      score_threshold: 5.0
+      reject_above_score_threshold: false   # never freeze the pose on a high-residual scan
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+      local_map_refresh_distance: 20.0
+      local_map_voxel_leaf_size: 0.0
+
+      # --- scan preprocessing (Hesai) ---
+      voxel_leaf_size: 0.2
+      scan_max_range: 50.0    # 100->15 starved vertical constraint (z drifted to +2.6m);
+                              # 50 m restores far geometry to pin z without the full-100 ambiguity
+      scan_min_range: 1.0
+      scan_period: 0.1
+
+      # --- map (0.5 m downsample for fast load) ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_us050.pcd"
+
+      # --- initial pose: base_link pose in map (LEVEL — base_link is gravity-aligned) ---
+      # Pinned geometrically by structural scan-to-gt_map overlap (99.8% inliers,
+      # scan transformed hesai_lidar->base_link via the static chain above).
+      # x~2.75 y~-0.50 yaw~106 deg (robot faces a different side than the curt bag,
+      # whose yaw was ~13 deg). z: map ground ~-0.84 + base height ~0.74 -> -0.10.
+      set_initial_pose: true
+      initial_pose_x: 2.75
+      initial_pose_y: -0.50
+      initial_pose_z: -0.10
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 0.798636
+      initial_pose_qw: 0.601815
+
+      # --- prediction (IMU integrated) ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: true
+      imu_preintegration_use_base_frame_transform: true
+      predict_pose_from_previous_delta: true
+
+      # --- TF output: Mode B (map -> odom); needs external odom -> base_link ---
+      enable_map_odom_tf: true
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: base_link
+
+      enable_debug: false
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0
+
+      # --- outputs: only the pose/TF stream is consumed downstream ---
+      publish_initial_map: false
+      enable_path_publishing: false
+      path_max_poses: 1000

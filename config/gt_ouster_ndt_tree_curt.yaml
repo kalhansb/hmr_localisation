@@ -1,0 +1,91 @@
+# NDT config for the 2026_07_06 "curt_kalhan_coop" bag over the SAME gt_map.
+# Fork of gt_ouster_ndt_tree_fused.yaml. Two things differ, both because this
+# bag's TF tree is namespaced with a `_curt` suffix and the robot starts facing
+# the opposite side of the same environment:
+#
+#   1. base_frame_id: base_link_curt   (vs base_link)
+#   2. initial_pose: same start spot as map-test-2 but heading rotated ~165 deg
+#      (old base heading was map-yaw 180 deg; new is ~-15 deg / map +x).
+#
+# Sensor wiring (all from the bag's /tf_static, so play /tf_static on replay):
+#   base_link_curt -> os_sensor -> os_lidar : (0.1105,0,0.404) quat(0,0,1,0)  yaw pi
+#                                             (identical rig to map-test-2)
+#   base_link_curt -> imu_curt              : (0.062,0,0.015)  quat(0,0,-0.70711,0.70711)
+#   /curt/imu/data frame_id == imu_curt  ->  NO imu_link->imu alias needed
+#     (unlike the map-test-2 bring-up, whose /imu/data frame_id was "imu").
+#
+# Launch (see doc/dscovox_exploration_run.md, coop-bag variant):
+#   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
+#     localization_param_dir:=/ws/config/gt_ouster_ndt_tree_curt.yaml
+#     cloud_topic:=/ouster/points imu_topic:=/curt/imu/data use_sim_time:=true
+#     base_frame_id:=base_link_curt
+#     publish_lidar_tf:=false publish_imu_tf:=false
+#
+# odom -> base_link_curt comes from the EKF (config/ekf_odom_curt.yaml).
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0
+      ndt_step_size: 0.1
+      ndt_num_threads: 16          # keep up with the 7.6 Hz sensor at rate 1.0
+      ndt_max_iterations: 50
+      transform_epsilon: 0.01
+      score_threshold: 5.0
+      reject_above_score_threshold: false   # never freeze the pose on a high-residual scan
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+      # Cache the cropped NDT target: crop at radius+20m, rebuild only after 20m
+      # of travel (vs every scan). Map is already 0.5m spaced -> skip the no-op
+      # 0.2m voxel pass on the crop.
+      local_map_refresh_distance: 20.0
+      local_map_voxel_leaf_size: 0.0
+
+      # --- scan preprocessing (Ouster) ---
+      voxel_leaf_size: 0.2
+      scan_max_range: 100.0
+      scan_min_range: 1.0
+      scan_period: 0.1
+
+      # --- map (0.5 m downsample for fast load; regenerate with downsample_map_pcl.cpp) ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_us050.pcd"
+
+      # --- initial pose: base_link_curt pose in map ---
+      # Pinned geometrically by structural scan-to-gt_map overlap (99.7% inliers):
+      # start x~3.0 y~0.0, heading yaw ~13 deg. That is ~168 deg from the map-test-2
+      # start (which was yaw 180 deg) -- i.e. facing the opposite side, as expected.
+      # z is loosely constrained (2D overlap); local ground ~-0.84 m, NDT refines it.
+      set_initial_pose: true
+      initial_pose_x: 3.0
+      initial_pose_y: 0.0
+      initial_pose_z: -0.4
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 0.113203
+      initial_pose_qw: 0.993572
+
+      # --- prediction (IMU integrated) ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: true
+      imu_preintegration_use_base_frame_transform: true
+      predict_pose_from_previous_delta: true
+
+      # --- TF output: Mode B (map -> odom); needs external odom -> base_link_curt ---
+      enable_map_odom_tf: true
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: base_link_curt
+
+      enable_debug: false          # per-scan stdout costs real time on Jetson
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0
+
+      # --- outputs: only the pose/TF stream is consumed downstream ---
+      publish_initial_map: false   # don't retain/ship the map on transient_local
+      enable_path_publishing: false  # full-path republish per scan grows unbounded
+      path_max_poses: 1000         # bound if path publishing is ever re-enabled

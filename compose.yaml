@@ -20,6 +20,7 @@ services:
     volumes:
       - ./:/ws
       - ../../../bags:/ws/bags    # rosbags at HMR_Explo/bags (3 levels up from ws/src/hmr_localisation)
+      - ../../../../Bags:/ws/extra_bags    # workspace-root Bags/ (coop + newer captures)
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     working_dir: /ws
     stdin_open: true

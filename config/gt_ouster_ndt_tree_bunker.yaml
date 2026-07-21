@@ -1,0 +1,95 @@
+# NDT config for the 2026_07_06 "bunker_kalhan_coop" bag (AgileX Bunker tracked
+# robot + Hesai LiDAR) over the SAME gt_map as the curt/go1/map-test-2 bags.
+# Fork of gt_ouster_ndt_tree_go1.yaml. What differs from the go1 bag:
+#
+#   1. LiDAR is again a Hesai on /hesai/points (frame hesai_lidar), 230400 pts,
+#      per-point time field `timestamp` FLOAT64 (offset 18) — same decode as go1.
+#   2. On bunker the Hesai is mounted LEVEL, same as go1 physically — both scan a
+#      horizontal plane. The difference is only the FRAME axis convention: go1's
+#      hesai_lidar frame is rolled (its +Z points sideways), whereas bunker's is
+#      upright — the composed base_link->hesai_lidar from /tf_static is a pure
+#      Rz +90 with base_link +Z mapping to hesai_lidar +Z (see below). base_frame_id stays the
+#      stock `base_link`, which is the bag's TF ROOT (no odom->base_link in the
+#      bag), so Mode B (map->odom NDT + odom->base_link EKF) doesn't collide.
+#   3. There is NO /hesai/imu on this bag. The body IMU /imu/data (frame "imu",
+#      near-level, |a|~9.8 gravity +Z) drives NDT preintegration and the EKF; the
+#      mapper deskews with /imu/data too (hesai_lidar<-imu extrinsic from TF).
+#
+# Sensor wiring — composed from the bag's /tf_static (a large CAD-assembly tree,
+# root base_link); play /tf_static on replay so tf2 can resolve these:
+#   base_link -> hesai_lidar : xyz(0.113,0.003,0.366)  q(0,0,0.7065,0.7077) Rz +90 (LEVEL)
+#   base_link -> imu         : xyz(0.096,0.040,0.116)  q(0,0,0.7077,0.7065) Rz +90 (LEVEL)
+#   hesai_lidar -> imu       : xyz(0.037,0.017,-0.250) q(0,0,0.0016,1.0)     ~identity rot
+#
+# Launch (see doc/dscovox_exploration_run.md, go1/bunker-bag variant):
+#   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
+#     localization_param_dir:=/ws/config/gt_ouster_ndt_tree_bunker.yaml
+#     cloud_topic:=/hesai/points imu_topic:=/imu/data use_sim_time:=true
+#     base_frame_id:=base_link
+#     publish_lidar_tf:=false publish_imu_tf:=false
+#
+# odom -> base_link comes from the EKF (config/ekf_odom_bunker.yaml).
+/**:
+    ros__parameters:
+      # --- registration ---
+      registration_method: "NDT_OMP"
+      ndt_resolution: 2.0
+      ndt_step_size: 0.1
+      ndt_num_threads: 16
+      ndt_max_iterations: 50
+      transform_epsilon: 0.01
+      score_threshold: 5.0
+      reject_above_score_threshold: false   # never freeze the pose on a high-residual scan
+
+      # --- crop NDT target to a neighbourhood of the current pose ---
+      enable_local_map_crop: true
+      local_map_radius: 80.0
+      local_map_min_points: 100
+      local_map_refresh_distance: 20.0
+      local_map_voxel_leaf_size: 0.0
+
+      # --- scan preprocessing (Hesai) ---
+      voxel_leaf_size: 0.2
+      scan_max_range: 100.0
+      scan_min_range: 1.0
+      scan_period: 0.1
+
+      # --- map (0.5 m downsample for fast load) ---
+      use_pcd_map: true
+      map_path: "/ws/gt_map/gt_map_us050.pcd"
+
+      # --- initial pose: base_link pose in map (LEVEL — base_link is gravity-aligned) ---
+      # Pinned geometrically by structural scan-to-gt_map overlap (99.8% inliers,
+      # scan transformed hesai_lidar->base_link via base_link->hesai_lidar above).
+      # x~2.50 y~-0.25 yaw~194 deg (robot heads the opposite way from go1's ~106).
+      # z: map ground ~-0.82 + base height ~0.36 -> -0.46.
+      set_initial_pose: true
+      initial_pose_x: 2.50
+      initial_pose_y: -0.25
+      initial_pose_z: -0.46
+      initial_pose_qx: 0.0
+      initial_pose_qy: 0.0
+      initial_pose_qz: 0.992546
+      initial_pose_qw: -0.121869
+
+      # --- prediction (IMU integrated) ---
+      use_odom: false
+      use_imu: false
+      use_imu_preintegration: true
+      imu_preintegration_use_base_frame_transform: true
+      predict_pose_from_previous_delta: true
+
+      # --- TF output: Mode B (map -> odom); needs external odom -> base_link ---
+      enable_map_odom_tf: true
+      global_frame_id: map
+      odom_frame_id: odom
+      base_frame_id: base_link
+
+      enable_debug: false
+      enable_timer_publishing: false
+      pose_publish_frequency: 30.0
+
+      # --- outputs: only the pose/TF stream is consumed downstream ---
+      publish_initial_map: false
+      enable_path_publishing: false
+      path_max_poses: 1000

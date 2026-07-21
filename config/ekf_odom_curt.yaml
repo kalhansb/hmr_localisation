@@ -1,0 +1,61 @@
+# =======================================================================
+# robot_localization EKF — continuous `odom -> base_link_curt` for the Mode B tree
+# =======================================================================
+# Fork of ekf_odom.yaml for the 2026_07_06 "curt_kalhan_coop" bag, whose frames
+# are namespaced with a `_curt` suffix and whose IMU is published on
+# /curt/imu/data (frame imu_curt). Only base_link_frame and imu0 differ from the
+# base config; see ekf_odom.yaml for the full design rationale.
+#
+# Tree (REP-105):
+#   map ──(NDT vs gt_map, lidar_localization_ros2)──> odom
+#   odom ──(THIS EKF: NDT pose + /curt/imu/data)─────> base_link_curt
+#   base_link_curt ──(bag /tf_static)──> os_sensor -> os_lidar, imu_curt
+# =======================================================================
+
+ekf_filter_node:
+  ros__parameters:
+    # use_sim_time is set by launch/ekf_odom.launch.py (true for bag replay).
+
+    frequency: 50.0            # odom->base broadcast rate (> NDT, < IMU)
+    sensor_timeout: 0.2        # coast on the motion model if a source stalls
+    two_d_mode: false          # outdoor route has roll/pitch/z -> full 3D
+    publish_tf: true           # broadcast odom -> base_link_curt
+    publish_acceleration: false
+
+    transform_time_offset: 0.0
+    transform_timeout: 0.0
+    print_diagnostics: true
+    debug: false
+
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link_curt   # <-- coop-bag base frame (vs base_link)
+    world_frame: odom          # -> EKF estimates & broadcasts odom -> base_link_curt
+
+    # --- NDT global pose, restamped to the odom frame by ndt_pose_relay.py -----
+    pose0: /pcl_pose_odom
+    pose0_config: [true,  true,  true,
+                   true,  true,  true,
+                   false, false, false,
+                   false, false, false,
+                   false, false, false]
+    pose0_differential: false
+    pose0_relative: false
+    pose0_queue_size: 10
+    pose0_rejection_threshold: 6.0
+    pose0_nodelay: false
+
+    # --- IMU (/curt/imu/data, frame "imu_curt") -------------------------------
+    # Fuse angular velocity only (vroll, vpitch, vyaw). Gyro is rotated into
+    # base_link_curt via the static base_link_curt->imu_curt TF, so it is valid
+    # regardless of whether /curt/imu/data carries a fused orientation quaternion.
+    imu0: /curt/imu/data       # <-- coop-bag IMU topic (vs /imu/data)
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  true,  true,  true,
+                  false, false, false]
+    imu0_differential: false
+    imu0_relative: false
+    imu0_queue_size: 50
+    imu0_remove_gravitational_acceleration: true

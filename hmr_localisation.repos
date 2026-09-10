@@ -5,12 +5,22 @@
 # directly on the fork, so there is no post-import patch step. ndt_omp_ros2 is
 # pinned straight to upstream.
 #   lidar_localization_ros2 <- rsasaki0109   (bounded NDT registration-cloud keep-alive;
-#                              cached cropped NDT target + gated map/path outputs)
+#                              cached cropped NDT target + gated map/path outputs;
+#                              multi-threaded fitness score + fitness_score_max_points)
+#
+# The pin below is what every measured result in docs/ was produced with. The fitness
+# score commit (4e8499a) is load-bearing: without it getFitnessScore() runs PCL's
+# single-threaded path (114 ms of a 192 ms callback) and the node cannot hold 10 Hz,
+# so an older pin will not reproduce the throughput numbers.
+#
+# small_gicp (the SMALL_VGICP / SMALL_GICP backend) is NOT vcs-imported: it is built
+# into the Docker image at a pinned tag (docker/Dockerfile, SMALL_GICP_REF = v1.0.1)
+# so the fork's optional find_package(small_gicp) always resolves.
 repositories:
   lidar_localization_ros2:
     type: git
     url: https://github.com/kalhansb/lidar_localization_ros2.git
-    version: c1e582a60ad74275bd343f134ac343f60add0439
+    version: 4e8499a66759df95d53ced9f5e3994e174380a67
   ndt_omp_ros2:
     type: git
     url: https://github.com/rsasaki0109/ndt_omp_ros2.git

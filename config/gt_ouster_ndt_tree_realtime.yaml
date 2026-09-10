@@ -1,8 +1,11 @@
 # Real-time Mode B tree config: map -> odom -> base_link at live playback rate 1.0.
 # The REP-105 tree (map->odom from THIS localizer; odom->base_link from an external
 # robot_localization EKF, or a static identity) with IMU preintegration, tuned to keep
-# up with the 7.6 Hz sensor and never freeze on a high-residual scan:
-#     ndt_num_threads: 16                  (quality-neutral speedup vs a 4-thread default)
+# up with the 10 Hz sensor and never freeze on a high-residual scan:
+#     registration_method: SMALL_VGICP     (small_gicp voxelized GICP; NDT_OMP bootstraps
+#                                           the first 5 scans, then hands over)
+#     ndt_num_threads: 8                   (OpenMP threads for both backends; sized for
+#                                           a Jetson AGX Orin sharing its 12 cores)
 #     reject_above_score_threshold: false  (do not freeze the pose on a high-residual scan)
 # Loads the light 0.5 m map (gt_map_us050.pcd) for fast startup. Run it with the EKF via
 # scripts/run_localization_tree.sh; reproduce the EKF-vs-static smoothing A/B with
@@ -10,13 +13,31 @@
 /**:
     ros__parameters:
       # --- registration ---
-      registration_method: "NDT_OMP"
-      ndt_resolution: 2.0
+      # SMALL_VGICP = small_gicp voxelized GICP against the cropped map target. The node
+      # still builds an NDT_OMP initializer on the full map and aligns the first 5 scans
+      # with it (ndt_* below) before switching to VGICP. Fallback: "NDT_OMP" -- nothing
+      # else here needs to change.
+      registration_method: "SMALL_VGICP"
+      vgicp_voxel_resolution: 1.0  # target voxel (m); map is 0.5 m spaced -> ~8 pts/voxel
+      gicp_corr_randomness: 20     # k neighbours per point for covariances (paid on every
+                                   # crop refresh over the whole cropped target)
+      gicp_max_correspondence_distance: 2.0  # (m) correspondence rejection radius
+      ndt_resolution: 2.0          # NDT bootstrap (first 5 scans) only
       ndt_step_size: 0.1
-      ndt_num_threads: 16          # keep up with the 7.6 Hz sensor at rate 1.0
-      ndt_max_iterations: 50
+      # OpenMP threads for the NDT bootstrap, the VGICP covariance/kd-tree/align and the
+      # fitness score. Clamped to the cores the container can see. 8 leaves a Jetson AGX
+      # Orin (12x Cortex-A78AE) four cores for GLIM, the sensor drivers and the planner;
+      # raising it past the core count only adds scheduler contention.
+      ndt_num_threads: 8
+      # 0 = compute the fitness score over every point (exact).  The score is evaluated
+      # with the same OpenMP pool as registration; a positive value estimates it from a
+      # uniform stride sample instead, which is far cheaper but biases the score high
+      # (~30% on the CURTMINI bag). Leave at 0 unless a Jetson cannot hold the scan rate
+      # even after the notes in README.md; then 4000 is a reasonable first value.
+      fitness_score_max_points: 0
+      ndt_max_iterations: 50       # iteration cap for both backends
       transform_epsilon: 0.01
-      score_threshold: 5.0
+      score_threshold: 5.0         # PCL mean-squared NN distance; same metric for NDT and VGICP
       reject_above_score_threshold: false   # never freeze the pose on a high-residual scan
 
       # --- crop NDT target to a neighbourhood of the current pose ---
@@ -31,7 +52,14 @@
 
       # --- scan preprocessing (Ouster) ---
       voxel_leaf_size: 0.2
-      scan_max_range: 100.0
+      # 50 m rather than the sensor's full 100 m: beyond ~50 m the returns are too
+      # sparse in the map to match, so they contribute bad correspondences and inflate
+      # the residual without adding constraint.  Measured on CURTMINI against the
+      # full-resolution reference trajectory -- it drops only 6% of points, but takes
+      # ATE p95 from 0.119 m to 0.086 m, worst-case error from 0.45 m to 0.22 m, and
+      # halves the reported fitness score (0.122 -> 0.065).  Raise it only for genuinely
+      # open sites where distant structure is well represented in the map.
+      scan_max_range: 50.0
       scan_min_range: 1.0
       scan_period: 0.1
 
@@ -40,6 +68,12 @@
       map_path: "/ws/gt_map/gt_map_us050.pcd"
 
       # --- initial pose: localize base_link; seed = (base_link -> os_lidar)^-1 ---
+      # THIS SEED IS THE map-test-2 BAG'S. Every recording starts from its own spot, so
+      # replaying a different bag with this seed starts the localizer in the wrong place
+      # and it never recovers. Verified seeds for the other bags, how they were recovered
+      # (BBS_2D global localization against the full-resolution gt_map.ply, not hand-
+      # placed), and which topics/frames each bag needs: docs/jetson_runs.md.
+      # scripts/jetson_bag_test.sh derives a seeded copy of this file per bag.
       set_initial_pose: true
       initial_pose_x: 0.1105
       initial_pose_y: 0.0

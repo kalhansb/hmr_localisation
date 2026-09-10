@@ -25,9 +25,12 @@
       ndt_resolution: 2.0          # NDT bootstrap (first 5 scans) only
       ndt_step_size: 0.1
       # OpenMP threads for the NDT bootstrap, the VGICP covariance/kd-tree/align and the
-      # fitness score. Clamped to the cores the container can see. 8 leaves a Jetson AGX
-      # Orin (12x Cortex-A78AE) four cores for GLIM, the sensor drivers and the planner;
-      # raising it past the core count only adds scheduler contention.
+      # fitness score. NOT clamped to the visible cores: resolveRegistrationThreadCount()
+      # returns this value as-is whenever it is positive, and only falls back to
+      # omp_get_max_threads() when it is <= 0. So this must be set to match the cores the
+      # container actually gets -- 8 assumes a Jetson AGX Orin (12x Cortex-A78AE) with
+      # four left for GLIM, the sensor drivers and the planner. On a one-core container
+      # set 1 explicitly (not 0; see docs/jetson_runs.md).
       ndt_num_threads: 8
       # 0 = compute the fitness score over every point (exact).  The score is evaluated
       # with the same OpenMP pool as registration; a positive value estimates it from a

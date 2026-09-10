@@ -139,8 +139,21 @@ docker compose exec ros bash /ws/scripts/jetson_bag_test.sh bunker
 Optional second and third arguments are a run name and a playback duration in seconds.
 The script runs the localizer alone — no EKF, `odom -> base_link` is a static identity —
 so the numbers are the node's own. It prints the cores it can actually see
-(`nproc`, `cpuset.cpus.effective`, `cpu.max`) before anything else; a cgroup limit shows
-up there first, and the node clamps its OpenMP pool to what it sees.
+(`nproc`, `cpuset.cpus.effective`, `cpu.max`) before anything else, because a cgroup limit
+shows up there first.
+
+> **The node does NOT clamp its thread pool to the cores it can see.**
+> `resolveRegistrationThreadCount()` returns the requested value unmodified whenever it is
+> positive; `omp_get_max_threads()` is only consulted when `ndt_num_threads <= 0`. So
+> `ndt_num_threads: 8` really does request 8 OpenMP threads on a one-core container, for
+> the kd-tree build, the covariance estimation, every solver iteration and the fitness
+> score. **Set `ndt_num_threads: 1` explicitly when the container has one core.** Do not
+> use `0` to mean "auto": under a cpuset that resolves to 1, but under a CFS quota
+> (`--cpus=1`) the affinity mask still reports every core on the board and it resolves to
+> that instead. Which of the two you have is exactly what the `cpuset`/`cpu quota` line
+> above tells you, and it matters: with a cpuset libgomp throttles barrier spinning, while
+> under a bare quota the idle workers spin against the same quota the one running thread
+> is trying to use.
 
 Output lands in `/ws/output/jetson_test/<run_name>.{status.csv,poses.csv,log}`, with a
 rate / alignment-time / gap table on stdout from `scripts/analysis/throughput_summary.py`.

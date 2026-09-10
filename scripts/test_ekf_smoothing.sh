@@ -24,6 +24,15 @@ mkdir -p output
 # processes inherit this, so the bag player and localizer share the SHM segment.
 export FASTRTPS_DEFAULT_PROFILES_FILE=/ws/config/fastdds_shm.xml
 
+# The bag this script's frames and initial_pose are wired for. Override with BAG=... ,
+# but a different recording needs its own seed (docs/jetson_runs.md lists the verified ones).
+BAG="${BAG:-bags/2026_06_19_18_19_06__kalhan-map-test-2_}"
+if [ ! -f "$BAG/metadata.yaml" ]; then
+  echo "no bag at $BAG (set BAG=... to pick another). Available under bags/:" >&2
+  ls -d bags/*/ 2>/dev/null | sed 's|^|  |' >&2
+  exit 1
+fi
+
 PIDS=()
 cleanup() {
   kill "${PIDS[@]}" 2>/dev/null || true
@@ -76,7 +85,7 @@ sleep 2
 # 4) play the bag (only the two topics the localizer needs; our static pubs own the
 #    tree). The localizer's cloud subscriber is best-effort (SensorDataQoS), matching
 #    the bag's recorded /ouster/points and the real robot's driver.
-ros2 bag play bags/2026_06_19_18_19_06__kalhan-map-test-2_ \
+ros2 bag play "$BAG" \
   --topics /ouster/points /imu/data --clock --rate 1.0 --playback-duration "$DUR"
 
 sleep 1

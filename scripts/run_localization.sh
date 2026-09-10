@@ -23,6 +23,15 @@ DUR="${1:-}"
 DUR_ARG=""
 [ -n "$DUR" ] && DUR_ARG="--playback-duration $DUR"
 
+# The bag the flat config's initial_pose is wired for. Override with BAG=... , but a
+# different recording needs its own seed (docs/jetson_runs.md lists the verified ones).
+BAG="${BAG:-bags/2026_06_19_18_19_06__kalhan-map-test-2_}"
+if [ ! -f "$BAG/metadata.yaml" ]; then
+  echo "no bag at $BAG (set BAG=... to pick another). Available under bags/:" >&2
+  ls -d bags/*/ 2>/dev/null | sed 's|^|  |' >&2
+  exit 1
+fi
+
 # 1) real-time localizer (16 NDT threads, reject gate off -- see the config header)
 ros2 launch lidar_localization_ros2 lidar_localization.launch.py \
   localization_param_dir:=/ws/config/gt_ouster_ndt_realtime.yaml \
@@ -36,7 +45,7 @@ echo "active. playing bag at rate 1.0 ${DUR:+(first ${DUR}s)}..."
 
 # 2) play the bag. The localizer's cloud subscriber is best-effort (SensorDataQoS),
 #    matching the bag's recorded /ouster/points and the real robot's driver.
-ros2 bag play bags/2026_06_19_18_19_06__kalhan-map-test-2_ \
+ros2 bag play "$BAG" \
   --topics /ouster/points /imu/data --clock --rate 1.0 $DUR_ARG
 
 # 3) dump the latched /path trajectory (map frame) to CSV

@@ -306,6 +306,20 @@ What it says:
   ~63 MB map + covariances, ~35 MB heap, ~50 MB of libraries (PCL, VTK, rclcpp,
   Fast-DDS), the remainder thread stacks and DDS bookkeeping. Note the segment is also
   what a killed process leaves behind in `/dev/shm`.
+
+  This is a DDS transport setting, not a node parameter. It lives in the Fast-DDS
+  profile `config/fastdds_shm.xml`, which every run script applies through
+  `FASTRTPS_DEFAULT_PROFILES_FILE`, so it governs every ROS process those scripts
+  start — the localizer, the EKF, the static transform publishers, the bag player —
+  and nothing in the node's YAML refers to it. Each publishing process creates its own
+  segment of that size for outgoing messages and every subscriber maps the publisher's
+  segment, so the localizer's 266 MB mapping was the bag player's segment, and the
+  setting changes the node's memory only through what it subscribes to. Two
+  consequences on the robot: a sensor driver in another container with its own DDS
+  environment is unaffected by this file and keeps whatever segment size it sets; and
+  if a cloud publisher does use this profile, 64 MB must hold every cloud still in
+  flight (a dozen Hesai clouds here) — if clouds stop arriving after a driver change,
+  this is the first number to raise.
 - **`local_map_radius: 50` is free** (nothing beyond 72 m of the crop centre can match
   a 50 m scan) and worth a little on bunker; it replaces the old
   `local_map_refresh_distance: 5` rung, which no longer appears here.

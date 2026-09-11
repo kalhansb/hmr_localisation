@@ -167,9 +167,11 @@ this way.
 
 **Reading it:** `gap_med` 0.100 s means the node keeps up with the 10 Hz sensor;
 0.200 s means it is processing every other scan. For reference, the 8-core x86 host
-headless with the shipped config (`scan_channel_stride: 2`) keeps 1063 of 1195 CURTMINI
-scans (9.1 Hz) at alignment median 26 ms / p95 66 ms, fitness median 0.066 m², using
-2.6 cores; at full channel resolution it is 945 scans (7.9 Hz), 41 / 86 ms, 3.7 cores.
+headless with the shipped config (stride 2, sampled fitness, 50 m crop, 64 MB SHM
+segment) keeps 1128 of 1195 CURTMINI scans (9.4 Hz) at alignment median 28 ms / p95
+75 ms, fitness median 0.067 m², using 1.9 cores and 242 MB; the original config (every
+channel, exact fitness, 80 m crop, 256 MB segment) was 945 scans (7.9 Hz), 41 / 86 ms,
+3.7 cores and 479 MB.
 
 > **Do not judge throughput with RViz attached.** A live viewer on the same host roughly
 > halves the scan rate (6.6 Hz → 3.2–4.4 Hz) and can push the node into losing lock
@@ -181,20 +183,23 @@ scans (9.1 Hz) at alignment median 26 ms / p95 66 ms, fitness median 0.066 m², 
 If the board cannot hold 10 Hz, in order of cost:
 
 1. `scan_channel_stride: 4` (the shipped value is 2; `cpu_optimisation.md` has the measured cost of each)
-2. `local_map_refresh_distance: 5`
-3. `fitness_score_max_points: 4000`
-4. `voxel_leaf_size: 0.3`
+2. `voxel_leaf_size: 0.3`
 
-Do not reach for a coarser map: `cpu_optimisation.md` shows it is slower, not faster.
+The sampled fitness score, the 50 m crop and the 64 MB shared-memory segment are
+already shipped (they were the free ones). Do not reach for a coarser map or
+`local_map_refresh_distance: 5`: `cpu_optimisation.md` shows the first is slower, not
+faster, and the second is redundant with the 50 m crop.
 
 `ndt_num_threads: 8` is what leaves GLIM, the drivers and the planner (in their own
 containers) their cores on a 12-core Orin — do not raise it.
 
-`fitness_score_max_points` defaults to `0`, which evaluates every point and reproduces
-PCL's value exactly. A positive value estimates the mean from a uniform stride sample:
-much cheaper, but the sample is systematic rather than random (VoxelGrid emits points
-ordered by voxel index) and has been observed to bias the score high. Prefer the default
-unless CPU-bound, and never compare a sampled score against an exact one.
+`fitness_score_max_points` is `1000` in the shipped config: the score is estimated from
+a uniform stride sample of the source points rather than all of them. `0` evaluates every
+point and reproduces PCL's value exactly, at 40–48% of the node's CPU. On both bags the
+1000-point sample lands within 1.5% of the exact score (`cpu_optimisation.md` §8); on a
+full-resolution cloud the sample is systematic (VoxelGrid emits points ordered by voxel
+index) and can bias the score high, so never compare a sampled score against an exact one
+across configs.
 
 ---
 

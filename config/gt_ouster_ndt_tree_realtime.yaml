@@ -32,12 +32,14 @@
       # four left for GLIM, the sensor drivers and the planner. On a one-core container
       # set 1 explicitly (not 0; see docs/jetson_runs.md).
       ndt_num_threads: 8
-      # 0 = compute the fitness score over every point (exact).  The score is evaluated
-      # with the same OpenMP pool as registration; a positive value estimates it from a
-      # uniform stride sample instead, which is far cheaper but biases the score high
-      # (~30% on the CURTMINI bag). Leave at 0 unless a Jetson cannot hold the scan rate
-      # even after the notes in README.md; then 4000 is a reasonable first value.
-      fitness_score_max_points: 0
+      # Number of source points the fitness score is estimated from (0 = every point,
+      # exact). The exact score was the single largest cost in the node -- a nearest-
+      # neighbour query per source point on the OpenMP pool, 40-48% of its CPU -- for a
+      # number nothing gates (reject_above_score_threshold is false, and the twist EKF
+      # clamps it at 0.1 before scaling its noise). A 1000-point sample lands within 1.5%
+      # of the exact value on both bags and the track moves < 5 mm (docs/cpu_optimisation.md
+      # section 8). Set 0 to get the exact score back.
+      fitness_score_max_points: 1000
       ndt_max_iterations: 50       # iteration cap for both backends
       transform_epsilon: 0.01
       score_threshold: 5.0         # PCL mean-squared NN distance; same metric for NDT and VGICP
@@ -45,7 +47,11 @@
 
       # --- crop NDT target to a neighbourhood of the current pose ---
       enable_local_map_crop: true
-      local_map_radius: 80.0
+      # 50 m, not more: scan_max_range is 50 m, so nothing beyond ~70 m of the crop centre
+      # can ever be matched, and on this site a wider crop only rebuilds the kd-tree and
+      # covariances over more of the map at every refresh. Measured accuracy-neutral
+      # (docs/cpu_optimisation.md section 8).
+      local_map_radius: 50.0
       local_map_min_points: 100
       # Cache the cropped NDT target: crop at radius+20m, rebuild only after 20m
       # of travel (vs every scan). Map is already 0.5m spaced -> skip the no-op

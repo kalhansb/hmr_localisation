@@ -92,11 +92,12 @@ docker compose stop
   the workspace was built against an image without small_gicp — `docker compose build`
   and rebuild.
 - **CPU budget.** The sensor runs at 10 Hz, so the node has 100 ms per scan. On an
-  8-core x86 host the tree config uses ~2.6 cores and aligns in 26 ms median / 66 ms
-  p95, keeping ~9 of every 10 scans; the EKF bridges the dropped ones (the pose is
-  never frozen). What that cost is made of, which knobs reduce it and what each one
-  costs in accuracy -- `scan_channel_stride` first, then the rest of the ladder -- is
-  measured in [`docs/cpu_optimisation.md`](docs/cpu_optimisation.md).
+  8-core x86 host the tree config uses ~1.9 cores and ~250 MB, aligns in 28 ms median
+  / 75 ms p95 and keeps every scan; a slow scan is bridged by the EKF (the pose is never
+  frozen). What that cost is made of, which knobs reduce it and what each one costs in
+  accuracy -- the sampled fitness score, the 64 MB shared-memory segment, the 50 m crop
+  and `scan_channel_stride` are the shipped ones -- is measured in
+  [`docs/cpu_optimisation.md`](docs/cpu_optimisation.md).
 - **Jetson AGX Orin (same containers).** Full runbook — the two trimmed bags, the
   verified per-bag start poses, the throughput test and how to score a run against a
   reference trajectory — is [`docs/jetson_runs.md`](docs/jetson_runs.md).

@@ -11,7 +11,9 @@
       <transport_descriptor>
         <transport_id>shm_transport</transport_id>
         <type>SHM</type>
-        <segment_size>268435456</segment_size>   <!-- 256 MB pool for big clouds in flight -->
+        <segment_size>67108864</segment_size>   <!-- 64 MB: the largest cloud (Hesai) is 5.5 MB, so a dozen in flight;
+                                                 the segment is mapped end to end into every subscriber, so 256 MB
+                                                 was half the localizer's RSS (docs/cpu_optimisation.md) -->
       </transport_descriptor>
       <transport_descriptor>
         <transport_id>udp_transport</transport_id>

@@ -47,16 +47,16 @@ is allowed for. Everything in §8 is config-only.
 
 | rung | change | CPU (CURTMINI / bunker) | memory | accuracy cost | status |
 |---|---|---|---|---|---|
-| free | `fitness_score_max_points: 1000` | −41% / −48% | — | none (§8) | measured, not yet shipped |
-| free | `segment_size` 256 → 64 MB in `config/fastdds_shm.xml` | — | −212 MB RSS | none (§8) | measured, not yet shipped |
-| free | `local_map_radius: 50` | 0 / −6% | −10 MB | none (§8) | measured, not yet shipped |
+| shipped | `fitness_score_max_points: 1000` | −41% / −48% | — | none (§8) | §8 |
+| shipped | `segment_size` 256 → 64 MB in `config/fastdds_shm.xml` | — | −212 MB RSS | none (§8) | §8 |
+| shipped | `local_map_radius: 50` | 0 / −6% | −10 MB | none (§8) | §8 |
 | shipped | `scan_channel_stride: 2` | −29% / −32% | −10 MB | 2–3 cm median vs full resolution | §3 |
 | 1 | `scan_channel_stride: 4` (the last safe value; 8 doubles the error, 16 has half-metre excursions) | a further −19% / −25% | −15 MB | 4.1 / 3.2 cm median vs full resolution | §3 |
 | 2 | `voxel_leaf_size: 0.3` | ~20 ms alignment | — | measurably worse yaw on turns | measured earlier (README) |
 
 The three free rows together take the node from 3.0 to 1.8 cores and 467 to 250 MB on
 CURTMINI, and from 2.5 to 1.3 cores and 481 to 263 MB on bunker, with 4–5 mm median
-shift. Not on the ladder, and why, in §4, §5 and §8.
+shift; all three ship in the realtime config as of `hmr_localisation` main. Not on the ladder, and why, in §4, §5 and §8.
 
 ---
 
@@ -261,7 +261,7 @@ scored against the same-day baseline run. Noise floor for this table: the `passi
 
 | variant | CURTMINI cores | RSS | align med / p95 | gap p95 | 2D ATE med / p95 | yaw | bunker cores | RSS | align med / p95 | gap p95 | 2D ATE med / p95 | yaw |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| shipped (`base`) | 3.03 | 467 MB | 25.1 / 66.0 ms | 0.200 s | — | — | 2.52 | 481 MB | 19.9 / 35.3 ms | 0.100 s | — | — |
+| stride 2 only (`base`, the config before these three shipped) | 3.03 | 467 MB | 25.1 / 66.0 ms | 0.200 s | — | — | 2.52 | 481 MB | 19.9 / 35.3 ms | 0.100 s | — | — |
 | `OMP_WAIT_POLICY=PASSIVE` | 3.15 | 467 | 26.6 / 65.3 | 0.200 | 1.4 mm / 1.1 cm | 0.002° | 2.54 | 480 | 19.9 / 34.2 | 0.100 | 2.4 mm / 1.2 cm | 0.005° |
 | `ndt_num_threads: 4` | 2.36 | 465 | 25.3 / 77.4 | 0.200 | 1.4 mm / 1.2 cm | 0.002° | 2.32 | 483 | 23.4 / 33.1 | 0.100 | 2.5 mm / 1.2 cm | 0.006° |
 | `local_map_radius: 50` | 3.07 | 454 | 26.6 / 67.1 | 0.200 | 1.6 mm / 1.2 cm | 0.002° | 2.37 | 474 | 17.2 / 32.7 | 0.100 | 2.5 mm / 1.2 cm | 0.006° |

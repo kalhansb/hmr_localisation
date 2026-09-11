@@ -114,12 +114,26 @@ variants, run with `MAP=/ws/gt_map/gt_map_usNNN.pcd`:
 bunker: `us050` 1126 scans, 34.7 / 52.0 ms; `us060` 1103, 34.6 / 53.5 ms, 5.6 cm;
 `us070` 1063, 37.5 / 55.5 ms, 2.6 cm; `us100` 944, 44.1 / 70.3 ms, 4.1 cm, yaw 0.08°.
 
+Node CPU by map, sampled on a second pass of the same sweep (stride forced to 1, so
+comparable with the stride-1 rows in §3):
+
+| map | CURTMINI node CPU | peak RSS | bunker node CPU | peak RSS |
+|---|---|---|---|---|
+| `us050` | 3.69 cores | 479 MB | 3.57 cores | 495 MB |
+| `us060` | 3.64 cores | 462 MB | 3.41 cores | 486 MB |
+| `us070` | 3.78 cores | 458 MB | 3.46 cores | 472 MB |
+| `us100` | 3.75 cores | 440 MB | 3.52 cores | 468 MB |
+
+A quarter of the map points changes CPU by under 5% in either direction (the run-to-run
+spread) and saves ~30-40 MB. Compare stride 2 in §3: −29-32% CPU on the same bags.
+
 VGICP registers against the 1.0 m voxel map, not the point cloud, and `us050` and
 `us100` produce the **same 50,884 voxels**. Per-scan cost is source points × (hash lookup
 + Mahalanobis) and never touches the map's point count. A sparser map only lowers the
 evidence per voxel (3.9 → 1.0 points, so each covariance comes from one point's k=20
 neighbourhood spanning ~2.5 m instead of ~1.3 m), so the covariances degrade, alignment
-takes *longer*, fewer scans are kept, and yaw noise grows sevenfold by `us100`. The
+takes *longer*, fewer scans are kept, CPU does not move, and yaw noise grows sevenfold
+by `us100`. The
 fitness floor rises with the point spacing (0.065 → 0.205 m²), so scores are not
 comparable across maps. What a sparser map does buy is the crop-refresh cost (kNN
 covariances over the cropped target every 20 m) and ~28 MB; §5 item 2 gets both without

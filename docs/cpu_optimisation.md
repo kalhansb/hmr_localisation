@@ -272,6 +272,21 @@ scored against the same-day baseline run. Noise floor for this table: the `passi
 | fitness 1000 + radius 50 + SHM 64 MB | **1.77** | **250** | 22.2 / 68.8 | **0.100** | 4.0 mm / 1.9 cm | 0.004° | **1.27** | **263** | 15.7 / 22.6 | 0.100 | 4.8 mm / 1.8 cm | 0.011° |
 | the same + 4 threads | 2.04 | 243 | 32.5 / 76.3 | 0.200 | 2.3 mm / 1.5 cm | 0.003° | 1.84 | 262 | 26.4 / 42.7 | 0.100 | 3.1 mm / 1.3 cm | 0.006° |
 
+The same three levers at higher strides, scored against the stride-1 runs of the §3
+sweep. Accuracy is the stride's alone — every row matches the stride-only row in §3 to
+within a few millimetres, same excursion times at 16 — while CPU roughly halves again:
+
+| stride | CURTMINI cores | RSS | 2D ATE med / p95 / max | bunker cores | RSS | 2D ATE med / p95 / max |
+|---|---|---|---|---|---|---|
+| 2 | 1.90 | 242 MB | 2.8 / 6.0 / 17 cm | 1.27 | 262 MB | 2.0 / 4.9 / 13 cm |
+| 4 | 1.06 | 232 MB | 4.3 / 7.7 / 22 cm | 0.84 | 252 MB | 3.2 / 8.6 / 20 cm |
+| 8 | 0.65 | 229 MB | 8.5 / 13.8 / 25 cm | 0.57 | 246 MB | 4.8 / 15.2 / 21 cm |
+| 16 | 0.43 | 223 MB | 10.5 / 24.3 / 56 cm, 0.5 m excursion | 0.44 | 262 MB | 7.5 / 22.5 / 67 cm, 0.5 m excursion |
+
+So the safe envelope is: the three free levers plus stride 2 (≈1.9 / 1.3 cores, the
+shipped accuracy) or plus stride 4 (≈1.1 / 0.8 cores, ~4 cm). Both keep every scan at
+10 Hz on this host.
+
 What it says:
 
 - **The exact fitness score is the single largest cost in the node** — 40–48% of its

@@ -51,7 +51,7 @@ is allowed for. Everything in §8 is config-only.
 | free | `segment_size` 256 → 64 MB in `config/fastdds_shm.xml` | — | −212 MB RSS | none (§8) | measured, not yet shipped |
 | free | `local_map_radius: 50` | 0 / −6% | −10 MB | none (§8) | measured, not yet shipped |
 | shipped | `scan_channel_stride: 2` | −29% / −32% | −10 MB | 2–3 cm median vs full resolution | §3 |
-| 1 | `scan_channel_stride: 4` | a further −19% / −25% | −15 MB | 4.1 / 3.2 cm median vs full resolution | §3 |
+| 1 | `scan_channel_stride: 4` (the last safe value; 8 doubles the error, 16 has half-metre excursions) | a further −19% / −25% | −15 MB | 4.1 / 3.2 cm median vs full resolution | §3 |
 | 2 | `voxel_leaf_size: 0.3` | ~20 ms alignment | — | measurably worse yaw on turns | measured earlier (README) |
 
 The three free rows together take the node from 3.0 to 1.8 cores and 467 to 250 MB on
@@ -91,6 +91,31 @@ and voxel grid. Stride 2 is shipped: it saves about a third of the node's CPU, k
 *more* scans (the bunker bag stops dropping any), and shifts the track by 2–3 cm median
 against full resolution — below the ~4 cm the realtime config already sits from a
 reference (`jetson_runs.md` §5). Revert with `scan_channel_stride: 1`.
+
+### Where it breaks
+
+The same sweep extended to 64 (128 beams down to 2), one session, scored against that
+session's stride-1 run. `max` is the worst single sample; "lock lost" means the error
+crossed 0.5 m and did not come back.
+
+| stride | beams | CURTMINI src pts | cores | 2D ATE med / p95 / max | yaw med | bunker src pts | cores | 2D ATE med / p95 / max | yaw med |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | 128 | 37,250 | 3.67 | — | — | 33,485 | 3.57 | — | — |
+| 2 | 64 | 23,372 | 2.92 | 2.7 / 6.1 / 17 cm | 0.03° | 19,117 | 2.53 | 2.2 / 4.7 / 9 cm | 0.05° |
+| 4 | 32 | 13,305 | 2.22 | 4.1 / 7.5 / 22 cm | 0.07° | 10,665 | 1.53 | 3.2 / 8.1 / 20 cm | 0.11° |
+| 8 | 16 | 7,152 | 1.63 | 8.4 / 13.8 / 25 cm | 0.07° | 5,489 | 0.89 | 4.8 / 15.1 / 23 cm | 0.09° |
+| 16 | 8 | 3,788 | 0.94 | 10.5 / 24.7 / 56 cm | 0.09° | 2,760 | 0.65 | 7.5 / 23.9 / 69 cm | 0.07° |
+| 32 | 4 | 2,026 | 0.66 | 35 / 58 / 98 cm | 0.32° | 1,329 | 0.56 | 18 cm / 13 m / 19 m, lock lost | 0.39° |
+| 64 | 2 | 1,181 | 0.59 | 0.8 / 7.9 / 8.6 m, lock lost | 9.7° | 660 | 0.47 | 47 / 52 / 53 m, lock lost | 171° |
+
+CPU keeps falling almost linearly in source points all the way down, but accuracy does
+not degrade gracefully past 4. Stride 2 and 4 stay inside the ~4 cm band the realtime
+config already sits from a reference. Stride 8 doubles the median error and is the knee.
+At 16 (eight beams) both bags have half-metre excursions within the first two minutes;
+at 32 CURTMINI wanders by a third of a metre and bunker loses lock at 63 s; at 64 neither
+bag localises. The fitness score does not warn until it is far too late (0.07 at stride
+16, 0.60 only at 64), so it cannot be used to detect an over-strided scan. Do not ship
+above 4.
 
 What this does not cover: the 120 s cuts stop before the CURTMINI end-of-run divergence,
 so whether fewer source points make that moment better or worse is unmeasured. A fair

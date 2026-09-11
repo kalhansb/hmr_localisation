@@ -155,13 +155,21 @@ shows up there first.
 > under a bare quota the idle workers spin against the same quota the one running thread
 > is trying to use.
 
-Output lands in `/ws/output/jetson_test/<run_name>.{status.csv,poses.csv,log}`, with a
-rate / alignment-time / gap table on stdout from `scripts/analysis/throughput_summary.py`.
+Output lands in `/ws/output/jetson_test/<run_name>.{status.csv,poses.csv,cpu.csv,log}`,
+with a rate / alignment-time / gap table on stdout from
+`scripts/analysis/throughput_summary.py` and one line of what it cost — the node's mean
+CPU in cores over the playback and its peak resident size, sampled from `/proc` every 2 s.
+
+For A/B runs the script takes two overrides that touch only the derived per-run config:
+`MAP=/ws/gt_map/gt_map_us100.pcd` swaps the map, and `SET="key=value ..."` sets any
+scalar parameter (`SET="scan_channel_stride=4 ndt_max_iterations=30"`). `cpu_optimisation.md` was produced
+this way.
 
 **Reading it:** `gap_med` 0.100 s means the node keeps up with the 10 Hz sensor;
-0.200 s means it is processing every other scan. For reference, an 8-core x86 host
-headless reaches 6.6 Hz on CURTMINI with alignment median 48 ms / p95 117 ms and fitness
-median 0.0644 m².
+0.200 s means it is processing every other scan. For reference, the 8-core x86 host
+headless with the shipped config (`scan_channel_stride: 2`) keeps 1063 of 1195 CURTMINI
+scans (9.1 Hz) at alignment median 26 ms / p95 66 ms, fitness median 0.066 m², using
+2.6 cores; at full channel resolution it is 945 scans (7.9 Hz), 41 / 86 ms, 3.7 cores.
 
 > **Do not judge throughput with RViz attached.** A live viewer on the same host roughly
 > halves the scan rate (6.6 Hz → 3.2–4.4 Hz) and can push the node into losing lock
@@ -172,9 +180,12 @@ median 0.0644 m².
 
 If the board cannot hold 10 Hz, in order of cost:
 
-1. `local_map_refresh_distance: 5`
-2. `fitness_score_max_points: 4000`
-3. `voxel_leaf_size: 0.3`
+1. `scan_channel_stride: 4` (the shipped value is 2; `cpu_optimisation.md` has the measured cost of each)
+2. `local_map_refresh_distance: 5`
+3. `fitness_score_max_points: 4000`
+4. `voxel_leaf_size: 0.3`
+
+Do not reach for a coarser map: `cpu_optimisation.md` shows it is slower, not faster.
 
 `ndt_num_threads: 8` is what leaves GLIM, the drivers and the planner (in their own
 containers) their cores on a 12-core Orin — do not raise it.
@@ -241,13 +252,27 @@ The realtime config on the 0.5 m map tracks that reference to **~4 cm median, ~1
 ## 6. What the results depend on
 
 Every measured number in this doc was produced with the fork pinned in
-`hmr_localisation.repos` at `4e8499a`. That pin is load-bearing: it contains the
-multi-threaded fitness score. Without it, `getFitnessScore()` runs PCL's single-threaded
-path — 114 ms of a 192 ms callback, more than the alignment itself — and no amount of
-tuning will hold 10 Hz. `small_gicp` is not vcs-imported; it is built into the image at
-tag `v1.0.1` (`docker/Dockerfile`).
+`hmr_localisation.repos` at `2ed0255` (`cpu_optimisation.md`) or its parent `4e8499a`
+(everything in this doc).
+That pin is load-bearing: `4e8499a` contains the multi-threaded fitness score — without
+it `getFitnessScore()` runs PCL's single-threaded path, 114 ms of a 192 ms callback, more
+than the alignment itself, and no amount of tuning will hold 10 Hz — and `2ed0255` adds
+`scan_channel_stride`, which the shipped config relies on (an older node silently ignores
+the parameter and runs at full resolution). `small_gicp` is not vcs-imported; it is built
+into the image at tag `v1.0.1` (`docker/Dockerfile`).
 
 The localizer subscribes to clouds **best-effort** (`SensorDataQoS`), matching both the
 driver's default output and the bags' recorded QoS, so no QoS reconfiguration is needed
 on the robot. Multi-MB clouds are routed over shared memory (`config/fastdds_shm.xml`);
 over UDP loopback they throttle to ~0.1 Hz. The run scripts set this automatically.
+
+---
+
+---
+
+## 7. Making it cheaper
+
+What the node costs, which knobs actually reduce it and by how much (channel stride,
+map density, the rest of the ladder in §4) is measured and ranked in
+[`cpu_optimisation.md`](cpu_optimisation.md). Everything there was produced with this
+script and the `MAP=` / `SET=` overrides from §4.

@@ -46,10 +46,12 @@ class Recorder(Node):
 
 
 def main():
-    if len(sys.argv) != 2:
+    # The run scripts pass --ros-args (use_sim_time); strip those before the arg check.
+    args = rclpy.utilities.remove_ros_args(sys.argv)
+    if len(args) != 2:
         sys.exit(__doc__)
     rclpy.init()
-    node = Recorder(sys.argv[1])
+    node = Recorder(args[1])
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

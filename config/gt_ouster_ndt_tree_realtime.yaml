@@ -55,6 +55,21 @@
 
       # --- scan preprocessing (Ouster) ---
       voxel_leaf_size: 0.2
+      # Keep every N-th LiDAR channel (beam) and drop the rest before any other
+      # preprocessing. 1 = all 128 channels. 2 halves the raw points and leaves ~63% of
+      # the post-voxel source points (the 0.2 m voxel already merges adjacent channels
+      # inside ~15 m), so preprocessing, alignment and the fitness score all shrink
+      # together; azimuth resolution -- what constrains yaw -- is untouched. Measured on
+      # the 8-core host (docs/cpu_optimisation.md): 2 takes the node from 3.7 to
+      # 2.6 cores and median alignment from 41 to 26 ms, drops fewer scans, and moves
+      # the track by 2.7 cm median (2 mm run-to-run noise) against every channel; 4 is
+      # 2.1 cores / 21 ms / 4.1 cm. Set 1 to get the full-resolution behaviour back.
+      # The channel is the row of an organised cloud (Ouster: 1024x128). For an
+      # unorganised cloud (Hesai: 230400x1) set scan_channel_count to the beams per
+      # firing block (128) so channel = index % count; with 0 the stride has no effect
+      # there (the node warns once).
+      scan_channel_stride: 2
+      scan_channel_count: 0
       # 50 m rather than the sensor's full 100 m: beyond ~50 m the returns are too
       # sparse in the map to match, so they contribute bad correspondences and inflate
       # the residual without adding constraint.  Measured on CURTMINI against the

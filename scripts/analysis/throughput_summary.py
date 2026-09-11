@@ -34,11 +34,19 @@ def main():
         "run", "scans", "rate_Hz", "align_med", "align_p95", "gap_med", "gap_p95", "fit_med"))
     for path in sys.argv[1:]:
         rows = list(csv.DictReader(open(path)))
+        # Drop leading rows that are not from this run: the recorder can receive the
+        # previous run's latched (transient-local) status -- possibly from another bag
+        # entirely, so earlier or later -- before this run's first scan, which would
+        # stretch the span and zero the rate. Consecutive real rows are ~0.1 s apart.
+        while len(rows) > 1 and \
+                abs(float(rows[0]["stamp_sec"]) - float(rows[1]["stamp_sec"])) > 60.0:
+            rows.pop(0)
         if len(rows) < 2:
             print("%-28s (no scans recorded)" % path)
             continue
-        stamps = floats(rows, "stamp_sec")
-        span = stamps[-1] - stamps[0]
+        # ...and a zero stamp published before sim time arrives.
+        stamps = [s for s in floats(rows, "stamp_sec") if s > 0.0]
+        span = (stamps[-1] - stamps[0]) if len(stamps) >= 2 else 0.0
         align = floats(rows, "alignment_time_sec")
         gap = floats(rows, "accepted_gap_sec")
         fit = floats(rows, "fitness_score")

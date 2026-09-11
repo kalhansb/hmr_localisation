@@ -92,12 +92,11 @@ docker compose stop
   the workspace was built against an image without small_gicp — `docker compose build`
   and rebuild.
 - **CPU budget.** The sensor runs at 10 Hz, so the node has 100 ms per scan. On an
-  8-core x86 host the tree config aligns in ~35-55 ms plus ~25 ms preprocessing and
-  ~30 ms fitness score: it holds the median but drops some scans on slow alignments,
-  and the EKF bridges those (the pose is never frozen). The config is trimmed where it
-  is free -- `scan_max_range: 50` (drops 6% of points, tightens the error tail) and an
-  exact fitness score on the OpenMP pool (`fitness_score_max_points: 0`).
-  `voxel_leaf_size: 0.3` buys another ~20 ms but measurably hurts yaw on turns.
+  8-core x86 host the tree config uses ~2.6 cores and aligns in 26 ms median / 66 ms
+  p95, keeping ~9 of every 10 scans; the EKF bridges the dropped ones (the pose is
+  never frozen). What that cost is made of, which knobs reduce it and what each one
+  costs in accuracy -- `scan_channel_stride` first, then the rest of the ladder -- is
+  measured in [`docs/cpu_optimisation.md`](docs/cpu_optimisation.md).
 - **Jetson AGX Orin (same containers).** Full runbook — the two trimmed bags, the
   verified per-bag start poses, the throughput test and how to score a run against a
   reference trajectory — is [`docs/jetson_runs.md`](docs/jetson_runs.md).
@@ -111,9 +110,8 @@ docker compose stop
   shared-memory cloud transport between containers, but killed ROS processes leave
   orphaned Fast-DDS segments in the host's `/dev/shm` (half of RAM on a Jetson): always
   `docker compose stop`, and reclaim with `fastdds shm clean` inside the container if
-  `df /dev/shm` fills up. If the board still cannot hold 10 Hz, in order of cost:
-  `local_map_refresh_distance: 5`, then `fitness_score_max_points: 4000`, then
-  `voxel_leaf_size: 0.3`.
+  `df /dev/shm` fills up. If the board still cannot hold 10 Hz, follow the ladder in
+  [`docs/cpu_optimisation.md`](docs/cpu_optimisation.md).
 - **Multi-robot mapping** builds on this tree (all robots localize against the same
   `gt_map`, sharing one global `map` frame). Runbook:
   [scovox `docs/distributed_mapping.md`](https://github.com/kalhansb/scovox/blob/main/docs/distributed_mapping.md).

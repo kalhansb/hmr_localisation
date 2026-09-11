@@ -40,18 +40,23 @@ NDT bootstrap grid; no variant below moves it by more than ~30 MB.
 
 ## 2. The ladder
 
-If a board cannot hold the rate, in order of cost. The first is the shipped default;
-the next rung is what to try first.
+Measured on both bags, each as an A/B against the shipped config with the same
+`traj_eval.py` scoring. "Free" means the track moved less than 5 mm median against the
+baseline run, i.e. inside the run-to-run noise once the different set of accepted scans
+is allowed for. Everything in §8 is config-only.
 
-| rung | change | measured gain | measured cost | status |
-|---|---|---|---|---|
-| shipped | `scan_channel_stride: 2` | −29–32% CPU, alignment 36–45% faster | 2–3 cm median track shift vs full resolution | §3 |
-| 1 | `scan_channel_stride: 4` | a further −19–25% CPU, alignment ~20–35% faster | 4.1 / 3.2 cm median vs full resolution, yaw 0.06–0.11° | §3 |
-| 2 | `local_map_refresh_distance: 5` | fewer wasted target points between refreshes | — | not measured with VGICP |
-| 3 | `fitness_score_max_points: 4000` | fitness ~30 ms → ~2 ms on one core | score biased ~30% high (diagnostic only in this config) | not measured |
-| 4 | `voxel_leaf_size: 0.3` | ~20 ms alignment | measurably worse yaw on turns | measured earlier (README) |
+| rung | change | CPU (CURTMINI / bunker) | memory | accuracy cost | status |
+|---|---|---|---|---|---|
+| free | `fitness_score_max_points: 1000` | −41% / −48% | — | none (§8) | measured, not yet shipped |
+| free | `segment_size` 256 → 64 MB in `config/fastdds_shm.xml` | — | −212 MB RSS | none (§8) | measured, not yet shipped |
+| free | `local_map_radius: 50` | 0 / −6% | −10 MB | none (§8) | measured, not yet shipped |
+| shipped | `scan_channel_stride: 2` | −29% / −32% | −10 MB | 2–3 cm median vs full resolution | §3 |
+| 1 | `scan_channel_stride: 4` | a further −19% / −25% | −15 MB | 4.1 / 3.2 cm median vs full resolution | §3 |
+| 2 | `voxel_leaf_size: 0.3` | ~20 ms alignment | — | measurably worse yaw on turns | measured earlier (README) |
 
-Not on the ladder, and why, in §4 and §5.
+The three free rows together take the node from 3.0 to 1.8 cores and 467 to 250 MB on
+CURTMINI, and from 2.5 to 1.3 cores and 481 to 263 MB on bunker, with 4–5 mm median
+shift. Not on the ladder, and why, in §4, §5 and §8.
 
 ---
 
@@ -142,10 +147,11 @@ stride plus accuracy risk. Keep `gt_map_us050.pcd`.
 
 ---
 
-## 5. Not yet measured, in the order worth trying
+## 5. Remaining unmeasured levers
 
-Found by reading the hot path and verified against the code, but not yet run through the
-bag test. Gains are estimates unless stated.
+Found by reading the hot path and verified against the code. Items 2, 4, 6 and 7 below
+have since been measured (§8): 7 and the radius-50 form of 2 are free and large, 4 costs
+accuracy, 6 does nothing. Items 1, 3, 5 and 8 are still estimates.
 
 1. **`ndt_num_threads` must equal the cores the container actually gets.** The node does
    not clamp its OpenMP pool (`resolveRegistrationThreadCount()` returns a positive value
@@ -218,3 +224,58 @@ run then fails to activate with `init_port ... open_and_lock_file failed`, fixed
 `fastdds shm clean`) and re-publishes its latched status to the next run's recorder
 (`throughput_summary.py` now drops that row). Run a config twice before believing a
 difference smaller than the noise floor above.
+
+---
+
+## 8. Config-only levers, measured (2026-09-11)
+
+Every candidate from §5 that needs no code change, plus two found on the way, run as an
+A/B against the shipped config (stride 2, 8 threads) on both bags, CPU and RSS sampled,
+scored against the same-day baseline run. Noise floor for this table: the `passive` and
+`iter30` rows, which change nothing, sit at 1.4–2.5 mm median / 1.1–1.2 cm p95.
+
+| variant | CURTMINI cores | RSS | align med / p95 | gap p95 | 2D ATE med / p95 | yaw | bunker cores | RSS | align med / p95 | gap p95 | 2D ATE med / p95 | yaw |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| shipped (`base`) | 3.03 | 467 MB | 25.1 / 66.0 ms | 0.200 s | — | — | 2.52 | 481 MB | 19.9 / 35.3 ms | 0.100 s | — | — |
+| `OMP_WAIT_POLICY=PASSIVE` | 3.15 | 467 | 26.6 / 65.3 | 0.200 | 1.4 mm / 1.1 cm | 0.002° | 2.54 | 480 | 19.9 / 34.2 | 0.100 | 2.4 mm / 1.2 cm | 0.005° |
+| `ndt_num_threads: 4` | 2.36 | 465 | 25.3 / 77.4 | 0.200 | 1.4 mm / 1.2 cm | 0.002° | 2.32 | 483 | 23.4 / 33.1 | 0.100 | 2.5 mm / 1.2 cm | 0.006° |
+| `local_map_radius: 50` | 3.07 | 454 | 26.6 / 67.1 | 0.200 | 1.6 mm / 1.2 cm | 0.002° | 2.37 | 474 | 17.2 / 32.7 | 0.100 | 2.5 mm / 1.2 cm | 0.006° |
+| `gicp_corr_randomness: 10` | 2.84 | 465 | 21.4 / 53.6 | 0.200 | **3.0 cm / 6.5 cm** | **0.086°** | 2.06 | 487 | 13.0 / 26.4 | 0.100 | **3.0 cm / 9.9 cm** | **0.047°** |
+| `ndt_max_iterations: 30` | 3.06 | 464 | 26.2 / 67.9 | 0.200 | 1.5 mm / 1.2 cm | 0.002° | 2.58 | 488 | 19.7 / 34.9 | 0.100 | 2.2 mm / 1.1 cm | 0.005° |
+| `fitness_score_max_points: 1000` | **1.79** | 470 | 21.3 / 62.3 | **0.100** | 4.0 mm / 1.5 cm | 0.004° | **1.30** | 485 | 15.9 / 22.1 | 0.100 | 4.9 mm / 1.9 cm | 0.011° |
+| SHM `segment_size` 64 MB | 3.10 | **255** | 26.0 / 67.5 | 0.200 | 1.3 mm / 1.3 cm | 0.002° | 2.50 | **274** | 19.6 / 33.2 | 0.100 | 2.1 mm / 1.1 cm | 0.005° |
+| fitness 1000 + radius 50 + SHM 64 MB | **1.77** | **250** | 22.2 / 68.8 | **0.100** | 4.0 mm / 1.9 cm | 0.004° | **1.27** | **263** | 15.7 / 22.6 | 0.100 | 4.8 mm / 1.8 cm | 0.011° |
+| the same + 4 threads | 2.04 | 243 | 32.5 / 76.3 | 0.200 | 2.3 mm / 1.5 cm | 0.003° | 1.84 | 262 | 26.4 / 42.7 | 0.100 | 3.1 mm / 1.3 cm | 0.006° |
+
+What it says:
+
+- **The exact fitness score is the single largest cost in the node** — 40–48% of its
+  CPU, more than the alignment itself. It is a nearest-neighbour query for every source
+  point against the cropped target's kd-tree, on 8 threads, for a number that nothing
+  gates (`reject_above_score_threshold: false`). Sampling 1000 points gives a score
+  within 1.5% of the exact one (0.0673 vs 0.0664 m², not the 30% the earlier note
+  feared — that figure was for the old voxel-index ordering on full-resolution clouds),
+  so the internal twist EKF's fitness-scaled measurement noise, which clamps at
+  0.1 m² anyway, is untouched. The 4–5 mm median shift is the different set of
+  accepted scans: the node stops dropping any on CURTMINI.
+- **Half the resident memory was the Fast-DDS shared-memory segment.** `pmap` on the
+  running node shows one 266 MB `fastrtps_*` mapping, the 256 MB `segment_size` in
+  `config/fastdds_shm.xml`, touched end to end as the ring buffer cycles. The Hesai
+  cloud is 5.5 MB and the Ouster 2.6 MB, so 64 MB holds a dozen in flight; at 64 MB
+  neither bag drops a scan and RSS falls by 212 MB. The rest of the node is ~250 MB:
+  ~63 MB map + covariances, ~35 MB heap, ~50 MB of libraries (PCL, VTK, rclcpp,
+  Fast-DDS), the remainder thread stacks and DDS bookkeeping. Note the segment is also
+  what a killed process leaves behind in `/dev/shm`.
+- **`local_map_radius: 50` is free** (nothing beyond 72 m of the crop centre can match
+  a 50 m scan) and worth a little on bunker; it replaces the old
+  `local_map_refresh_distance: 5` rung, which no longer appears here.
+- **`gicp_corr_randomness: 10` is the fastest alignment in the table and the only
+  variant that costs accuracy**: 3 cm median, 0.05–0.09° yaw, more than stride 2.
+  Leave it at 20.
+- **Fewer threads only help while the fitness score is exact.** 4 threads cut CPU 22%
+  on CURTMINI at stride 2 because the fitness kd-tree query does not scale past 4; once
+  the score is sampled the alignment is what remains, it does scale, and 4 threads is
+  slower in both CPU and wall time and drops scans again. Keep `ndt_num_threads` at
+  the cores the container really has (§5 item 1).
+- `OMP_WAIT_POLICY=PASSIVE` and `ndt_max_iterations: 30` change nothing: libgomp's
+  default spin is already short, and the solver rarely reaches 30 iterations.

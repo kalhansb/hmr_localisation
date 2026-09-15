@@ -1,0 +1,19 @@
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+bag: /home/jetsondevkit/jetbot-slam/hmr_localisation/bags/curtmini_jetson/curtmini_jetson_0.mcap
+config: /home/jetsondevkit/glim-config/curtmini_o_combogpu
+variant: o_combogpu
+odometry: config_odometry_gpu.json so=libodometry_estimation_gpu.so threads=1
+mapping: local=False global=False
+preprocess: downsample_res=1.0 random_target=2500 threads=1
+T_lidar_imu: [0.0485, 0.0, -0.389, 0.0, 0.0, 0.707106781, 0.707106781]
+pinning glim to core(s) 0 (player/recorder unpinned)
+sampling pid 19413 (glim_rosnode)
+playing at rate 1.0 (first 120s)...
+player finished; letting the queue drain for 20 s to size the backlog...
+
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combogpu_r3   1179     9.97    0.100    0.100     1179        0     0.20
+node CPU: 0.62 cores avg over 139 s (of 12 visible); peak RSS 226 MB
+node CPU (playback window only): 0.70 cores over 119 s
+node log warn/error lines: 338
+files -> /home/jetsondevkit/glim-output/cyc_glim_curt_o_combogpu_r3.*

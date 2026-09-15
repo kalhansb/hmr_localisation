@@ -1,0 +1,179 @@
+rmw: rmw_cyclonedds_cpp
+uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+config md5: 9188275c3cbb1c9b6a6edee4a0b53473
+rmem_max: 10485760
+=========== cyc_glim_bunk_o_combo_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combo_r1     1165    10.01    0.100    0.100     1165        0    -0.06
+node CPU: 0.66 cores avg over 139 s (of 12 visible); peak RSS 191 MB
+node CPU (playback window only): 0.75 cores over 119 s
+node log warn/error lines: 4
+=========== cyc_glim_bunk_o_combo_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combo_r2     1165    10.01    0.100    0.100     1165        0    -0.04
+node CPU: 0.66 cores avg over 139 s (of 12 visible); peak RSS 194 MB
+node CPU (playback window only): 0.75 cores over 119 s
+node log warn/error lines: 4
+=========== cyc_glim_bunk_o_combo_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combo_r3     1165    10.01    0.100    0.100     1165        0    -0.06
+node CPU: 0.66 cores avg over 139 s (of 12 visible); peak RSS 194 MB
+node CPU (playback window only): 0.75 cores over 119 s
+node log warn/error lines: 4
+=========== cyc_glim_bunk_o_combogpu_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combogpu_r1   1185    10.01    0.100    0.100     1185        0    -0.19
+node CPU: 0.66 cores avg over 139 s (of 12 visible); peak RSS 212 MB
+node CPU (playback window only): 0.75 cores over 119 s
+node log warn/error lines: 4
+=========== cyc_glim_bunk_o_combogpu_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combogpu_r2   1185    10.01    0.100    0.100     1185        0    -0.18
+node CPU: 0.65 cores avg over 139 s (of 12 visible); peak RSS 213 MB
+node CPU (playback window only): 0.74 cores over 119 s
+node log warn/error lines: 4
+=========== cyc_glim_bunk_o_combogpu_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combogpu_r3   1185    10.01    0.100    0.100     1185        0    -0.19
+node CPU: 0.65 cores avg over 139 s (of 12 visible); peak RSS 211 MB
+node CPU (playback window only): 0.74 cores over 119 s
+node log warn/error lines: 4
+=========== cyc_glim_bunk_o_combofull_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combofull_r1   1165    10.01    0.100    0.100     1165        0    -0.07
+node CPU: 0.75 cores avg over 139 s (of 12 visible); peak RSS 1539 MB
+node CPU (playback window only): 0.85 cores over 119 s
+node log warn/error lines: 66
+=========== cyc_glim_bunk_o_combofull_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combofull_r2   1165    10.01    0.100    0.100     1165        0    -0.05
+node CPU: 0.77 cores avg over 139 s (of 12 visible); peak RSS 1519 MB
+node CPU (playback window only): 0.87 cores over 119 s
+node log warn/error lines: 66
+=========== cyc_glim_bunk_o_combofull_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_bunk_o_combofull_r3   1165    10.01    0.100    0.100     1165        0    -0.00
+node CPU: 0.78 cores avg over 139 s (of 12 visible); peak RSS 1521 MB
+node CPU (playback window only): 0.88 cores over 119 s
+node log warn/error lines: 66
+=========== cyc_hmr_bunk_s4_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_bunk_s4_r1             1158     9.77     0.0534     0.0739    0.100    0.100   0.0803
+node CPU: 0.74 cores avg over 131 s (of 12 visible); peak RSS 152 MB
+=========== cyc_hmr_bunk_s4_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_bunk_s4_r2             1158     9.77     0.0538     0.0743    0.100    0.100   0.0803
+node CPU: 0.74 cores avg over 131 s (of 12 visible); peak RSS 153 MB
+=========== cyc_hmr_bunk_s4_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_bunk_s4_r3             1158     9.76     0.0532     0.0734    0.100    0.100   0.0803
+node CPU: 0.73 cores avg over 131 s (of 12 visible); peak RSS 161 MB
+=========== cyc_hmr_bunk_s8_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_bunk_s8_r1             1159     9.79     0.0397     0.0563    0.100    0.100   0.0773
+node CPU: 0.65 cores avg over 131 s (of 12 visible); peak RSS 150 MB
+=========== cyc_hmr_bunk_s8_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_bunk_s8_r2             1159     9.79     0.0407     0.0564    0.100    0.100   0.0773
+node CPU: 0.65 cores avg over 131 s (of 12 visible); peak RSS 147 MB
+=========== cyc_hmr_bunk_s8_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_bunk_s8_r3             1159     9.80     0.0398     0.0551    0.100    0.100   0.0773
+node CPU: 0.65 cores avg over 131 s (of 12 visible); peak RSS 151 MB
+=========== cyc_glim_curt_o_combo_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combo_r1     1158     9.97    0.100    0.100     1158        0    -0.01
+node CPU: 0.60 cores avg over 139 s (of 12 visible); peak RSS 190 MB
+node CPU (playback window only): 0.68 cores over 119 s
+node log warn/error lines: 331
+=========== cyc_glim_curt_o_combo_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combo_r2     1158     9.97    0.100    0.100     1158        0    -0.02
+node CPU: 0.61 cores avg over 139 s (of 12 visible); peak RSS 187 MB
+node CPU (playback window only): 0.69 cores over 119 s
+node log warn/error lines: 331
+=========== cyc_glim_curt_o_combo_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combo_r3     1158     9.97    0.100    0.100     1158        0    -0.00
+node CPU: 0.61 cores avg over 139 s (of 12 visible); peak RSS 187 MB
+node CPU (playback window only): 0.70 cores over 119 s
+node log warn/error lines: 331
+=========== cyc_glim_curt_o_combogpu_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combogpu_r1   1179     9.97    0.100    0.100     1179        0    -0.11
+node CPU: 0.62 cores avg over 139 s (of 12 visible); peak RSS 215 MB
+node CPU (playback window only): 0.70 cores over 119 s
+node log warn/error lines: 338
+=========== cyc_glim_curt_o_combogpu_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combogpu_r2   1179     9.97    0.100    0.100     1179        0    -0.06
+node CPU: 0.62 cores avg over 139 s (of 12 visible); peak RSS 219 MB
+node CPU (playback window only): 0.70 cores over 119 s
+node log warn/error lines: 338
+=========== cyc_glim_curt_o_combogpu_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combogpu_r3   1179     9.97    0.100    0.100     1179        0     0.20
+node CPU: 0.62 cores avg over 139 s (of 12 visible); peak RSS 226 MB
+node CPU (playback window only): 0.70 cores over 119 s
+node log warn/error lines: 338
+=========== cyc_glim_curt_o_combofull_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combofull_r1   1158     9.97    0.100    0.100     1158        0    -0.04
+node CPU: 0.75 cores avg over 139 s (of 12 visible); peak RSS 1062 MB
+node CPU (playback window only): 0.86 cores over 119 s
+node log warn/error lines: 549
+=========== cyc_glim_curt_o_combofull_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combofull_r2   1158     9.97    0.100    0.100     1158        0    -0.05
+node CPU: 0.76 cores avg over 139 s (of 12 visible); peak RSS 1062 MB
+node CPU (playback window only): 0.86 cores over 119 s
+node log warn/error lines: 549
+=========== cyc_glim_curt_o_combofull_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+run                         scans  rate_Hz  gap_med  gap_p95   in_win  backlog  lag_end
+cyc_glim_curt_o_combofull_r3   1158     9.97    0.100    0.100     1158        0    -0.04
+node CPU: 0.76 cores avg over 139 s (of 12 visible); peak RSS 1059 MB
+node CPU (playback window only): 0.87 cores over 119 s
+node log warn/error lines: 549
+=========== cyc_hmr_curt_s4_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_curt_s4_r1             1058     9.04     0.0597     0.1006    0.100    0.200   0.0683
+node CPU: 0.71 cores avg over 131 s (of 12 visible); peak RSS 142 MB
+=========== cyc_hmr_curt_s4_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_curt_s4_r2             1058     9.05     0.0593     0.0991    0.100    0.200   0.0683
+node CPU: 0.71 cores avg over 131 s (of 12 visible); peak RSS 144 MB
+=========== cyc_hmr_curt_s4_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_curt_s4_r3             1058     8.97     0.0594     0.1001    0.100    0.200   0.0682
+node CPU: 0.71 cores avg over 131 s (of 12 visible); peak RSS 144 MB
+=========== cyc_hmr_curt_s8_r1 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_curt_s8_r1             1100     9.27     0.0492     0.0692    0.100    0.199   0.0687
+node CPU: 0.63 cores avg over 131 s (of 12 visible); peak RSS 136 MB
+=========== cyc_hmr_curt_s8_r2 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_curt_s8_r2             1100     9.29     0.0495     0.0716    0.100    0.101   0.0687
+node CPU: 0.63 cores avg over 131 s (of 12 visible); peak RSS 135 MB
+=========== cyc_hmr_curt_s8_r3 ===========
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+cyc_hmr_curt_s8_r3             1100     9.30     0.0495     0.0709    0.100    0.101   0.0687
+node CPU: 0.63 cores avg over 131 s (of 12 visible); peak RSS 136 MB
+===== TABLE SWEEP COMPLETE =====

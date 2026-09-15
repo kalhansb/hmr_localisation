@@ -1,0 +1,21 @@
+shm: shm.clean: 0 ports in use 0 segments in use 0 zombie ports cleaned 0 zombie segments cleaned 
+cores visible: 12; affinity: 0-11
+rmw: rmw_cyclonedds_cpp
+cyclone uri: file:///tmp/claude-1000/-home-jetsondevkit/0e7ee909-3f2f-4b65-85f4-bec3127c6fd2/scratchpad/cyc_user.xml
+bag: /home/jetsondevkit/jetbot-slam/hmr_localisation/bags/bunker_jetson/bunker_jetson_0.mcap
+override: map_path = "/home/jetsondevkit/jetbot-slam/hmr_localisation/gt_map/gt_map_us050.pcd"
+override: scan_channel_count = 128
+override: scan_channel_stride = 8
+override: ndt_num_threads = 1
+pinning localizer to core(s) 0 (player/recorders unpinned)
+waiting for map load + activation...
+registration_method: SMALL_VGICP
+ndt_num_threads: 1 (using 1; OpenMP sees 1 cores)
+scan_channel_stride: 8 (scan_channel_count: 128) (keeping every stride-th channel)
+Map Size 196404
+playing at rate 1.0 (first 120s)...
+
+run                           scans  rate_Hz  align_med  align_p95  gap_med  gap_p95  fit_med
+cycu_bunk_s8_r3                1159     9.79     0.0403     0.0556    0.100    0.100   0.0774
+node CPU: 0.65 cores avg over 131 s (of 12 visible); peak RSS 149 MB
+files -> /home/jetsondevkit/jetbot-slam/hmr_localisation/output/jetson_test/cycu_bunk_s8_r3.*

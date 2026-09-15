@@ -1,0 +1,24 @@
+shm: shm.clean: 0 ports in use 0 segments in use 0 zombie ports cleaned 0 zombie segments cleaned 
+cores visible: 12; affinity: 0-11
+rmw: rmw_cyclonedds_cpp
+cyclone uri: file:///home/jetsondevkit/jetbot-slam/hmr_localisation/scripts/cyclonedds_study/cyc_user.xml
+bag: /home/jetsondevkit/jetbot-slam/hmr_localisation/bags/curtmini_jetson/curtmini_jetson_0.mcap
+override: map_path = "/home/jetsondevkit/jetbot-slam/hmr_localisation/gt_map/gt_map_us050.pcd"
+override: scan_channel_stride = 4
+override: ndt_num_threads = 1
+override: initial_pose_x = 7.4397
+override: initial_pose_y = -4.2354
+override: initial_pose_qz = 0.8530502707493620
+override: initial_pose_qw = 0.5218287416139898
+pinning localizer to core(s) 0 (player/recorders unpinned)
+waiting for map load + activation...
+registration_method: SMALL_VGICP
+ndt_num_threads: 1 (using 1; OpenMP sees 1 cores)
+scan_channel_stride: 4 (scan_channel_count: 0) (keeping every stride-th channel)
+Map Size 196404
+playing at rate 1.0 (first 120s)...
+
+run                           scans  rate_Hz  align_med  align_p95  gap_med  gap_p95  fit_med
+seed_curt_across100            1058     8.99     0.0597     0.0997    0.100    0.200   0.0682
+node CPU: 0.71 cores avg over 131 s (of 12 visible); peak RSS 143 MB
+files -> /home/jetsondevkit/jetbot-slam/hmr_localisation/output/jetson_test/seed_curt_across100.*

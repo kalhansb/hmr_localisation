@@ -1,0 +1,69 @@
+# arm64 (Jetson) variant of docker/Dockerfile.
+#
+# WHY THIS EXISTS: the tracked Dockerfile starts FROM osrf/ros:jazzy-desktop, and
+# the README claims that tag is multi-arch. It is not -- osrf/ros:jazzy-desktop
+# publishes a single-architecture amd64 manifest only (verified against the Docker
+# Hub registry API; library/ubuntu:22.04 returns a proper multi-arch list through
+# the same code path, so this is not a query artefact). On an arm64 Jetson that tag
+# either fails to pull or, if binfmt/qemu is registered, silently runs under
+# emulation -- which would make any jetson_bag_test.sh throughput number
+# meaningless, since measuring throughput is the entire point of that script.
+#
+# ros:jazzy-perception DOES publish arm64, and is the right base anyway: it already
+# carries PCL (pcl_ros, pcl_conversions) and omits the RViz/desktop stack that
+# docs/jetson_runs.md explicitly says not to run during a throughput measurement.
+# ~2.4 GB on disk vs the desktop image's much larger footprint.
+#
+# NOT YET BUILT OR TESTED -- no Docker socket access on this host at time of writing.
+FROM ros:jazzy-perception
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Build tooling + mcap storage plugin (the bags are mcap), plus the localizer's
+# direct find_package() deps. The perception image is ros_base + perception, so it
+# has PCL but not necessarily the lifecycle/tf2 packages the component needs;
+# listing them explicitly keeps the build from depending on rosdep alone. Packages
+# already present in the base image are a no-op here.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3-colcon-common-extensions \
+        python3-rosdep \
+        git \
+        wget \
+        ros-jazzy-rosbag2-storage-mcap \
+        ros-jazzy-pcl-conversions \
+        ros-jazzy-pcl-ros \
+        ros-jazzy-pybind11-vendor \
+        ros-jazzy-robot-localization \
+        ros-jazzy-rclcpp-lifecycle \
+        ros-jazzy-lifecycle-msgs \
+        ros-jazzy-diagnostic-msgs \
+        ros-jazzy-tf2-ros \
+        ros-jazzy-tf2-sensor-msgs \
+        ros-jazzy-tf2-geometry-msgs \
+        ros-jazzy-tf2-eigen \
+        libeigen3-dev \
+        libomp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# small_gicp: GICP/VGICP backend (registration_method: SMALL_VGICP / SMALL_GICP).
+# Not in the Jazzy binary index, so built from source at the same pinned tag the
+# tracked Dockerfile uses. No PCL/TBB/-march=native, so it stays portable.
+ARG SMALL_GICP_REF=57c1106daf83c2c79ee0c58a9c7ed0032298ff4e   # v1.0.1
+RUN git clone https://github.com/koide3/small_gicp.git /tmp/small_gicp \
+    && git -C /tmp/small_gicp checkout ${SMALL_GICP_REF} \
+    && cmake -S /tmp/small_gicp -B /tmp/small_gicp/build \
+         -DCMAKE_BUILD_TYPE=Release -DBUILD_HELPER=ON \
+         -DBUILD_WITH_PCL=OFF -DBUILD_WITH_TBB=OFF -DBUILD_WITH_MARCH_NATIVE=OFF \
+         -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_BENCHMARKS=OFF \
+    && cmake --build /tmp/small_gicp/build --parallel "$(nproc)" \
+    && cmake --install /tmp/small_gicp/build \
+    && ldconfig \
+    && rm -rf /tmp/small_gicp
+
+RUN rosdep update --rosdistro jazzy || true
+
+RUN echo 'source /opt/ros/jazzy/setup.bash' >> /root/.bashrc && \
+    echo '[ -f /ws/install/setup.bash ] && source /ws/install/setup.bash' >> /root/.bashrc
+
+WORKDIR /ws
+CMD ["bash"]

@@ -1,0 +1,22 @@
+# Local overrides for this arm64 Jetson checkout. Two unrelated fixes:
+#
+# 1. BAG MOUNTS. compose.yaml assumes the repo sits at <root>/ws/src/hmr_localisation,
+#    so its ../../../bags and ../../../../Bags mounts resolve to /home/bags and /Bags
+#    here. This checkout is a plain clone, so point both at the repo-local bags/ dir
+#    (already covered by .gitignore).
+#
+# 2. BASE IMAGE. compose.yaml builds docker/Dockerfile, which starts FROM
+#    osrf/ros:jazzy-desktop -- an amd64-only tag, despite the README calling it
+#    multi-arch. On arm64 that pull fails, or worse runs emulated and makes the
+#    throughput benchmark meaningless. docker/Dockerfile.arm64 uses
+#    ros:jazzy-perception instead, which does publish arm64.
+#
+# Drop this file to get the upstream behaviour back.
+services:
+  ros:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.arm64
+    volumes:
+      - ./bags:/ws/bags
+      - ./bags:/ws/extra_bags

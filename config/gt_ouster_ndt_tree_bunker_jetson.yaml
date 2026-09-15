@@ -11,7 +11,8 @@
 #     ATE 2.3 cm median / 8.3 cm p95      memory flat (+0.4 MB/min)
 #
 # Differences from gt_ouster_ndt_tree_realtime.yaml -- these three, nothing else:
-#   scan_channel_stride  2 -> 4     halves the scan again; the accuracy/CPU knee
+#   scan_channel_stride  2 -> 4     halves the scan again; the LAST SAFE value --
+#                                   8 is the knee, 32 loses lock (commit f30d8b4)
 #   scan_channel_count   0 -> 128   MANDATORY on Hesai, see the note at the param
 #   ndt_num_threads      8 -> 1     the node is pinned to a single core
 #

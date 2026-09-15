@@ -49,7 +49,7 @@ def report(path):
         c.append(float(row["cpu_ticks"]))
         r.append(float(row["rss_kb"]) / 1024.0)
     t, c, r = np.array(t), np.array(c), np.array(r)
-    if len(t) < 5:
+    if len(t) < 5 or t[-1] - t[0] < WIN * 0.5:   # same guard as cpu_window.window()
         return None
 
     # same busiest-120 s window cpu_window.py picks, by CPU ticks consumed
@@ -72,12 +72,17 @@ def report(path):
                 final=float(r[-1]), max=float(r.max()))
 
 
-print("%-26s %8s %10s %10s %7s" % ("run", "rss_MB", "rate_MB/m", "tail_MB/m", "still"))
-for a in sys.argv[1:]:
-    label, path = a.split(":", 1)
-    d = report(path)
-    if d is None:
-        print("%-26s %8s" % (label, "n/a"))
-    else:
-        print("%-26s %8.0f %10.1f %10.1f %7s" % (
-            label, d["peak"], d["rate"], d["tail"], "yes" if d["still"] else "no"))
+def main(argv):
+    print("%-26s %8s %10s %10s %7s" % ("run", "rss_MB", "rate_MB/m", "tail_MB/m", "still"))
+    for a in argv:
+        label, path = a.split(":", 1)
+        d = report(path)
+        if d is None:
+            print("%-26s %8s" % (label, "n/a"))
+        else:
+            print("%-26s %8.0f %10.1f %10.1f %7s" % (
+                label, d["peak"], d["rate"], d["tail"], "yes" if d["still"] else "no"))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

@@ -18,9 +18,11 @@ import mem_growth
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SG = os.environ.get("SG", os.path.join(HERE, "results"))
-G = os.environ.get("GLIM_OUT", os.path.expanduser("~/glim-output"))
-O = os.environ.get("HMR_OUT", os.path.expanduser("~/jetbot-slam/hmr_localisation/output/jetson_test"))
-H = f"{SG}/harness"
+# Default to the vendored evidence so the published table regenerates from a bare
+# checkout. Point these at live run directories to score fresh runs instead.
+G = os.environ.get("GLIM_OUT", SG)
+O = os.environ.get("HMR_OUT", SG)
+H = HERE          # the scripts this invokes are the ones in this directory
 REF = {"bunker": f"{O}/bunk_ch1.poses.csv", "curtmini": f"{O}/curt_ch1.poses.csv"}
 
 ROWS = [
@@ -55,26 +57,47 @@ def ate(bag, sys_kind, name):
     return float(f[2]) * 100.0, float(f[3]) * 100.0
 
 
-print(f"{'system':8} {'mode':10} {'bag':9} {'rate Hz':>7} {'cores':>6} {'range':>11} "
+REPS = (1, 2, 3)
+degraded = []      # rows whose ATE mean is over fewer than len(REPS) reps
+
+print(f"{'system':8} {'mode':10} {'bag':9} {'rate Hz':>7} {'cores':>6} {'range':>9} "
       f"{'p95':>5} {'ATE med':>8} {'ATE p95':>8} {'RSS MB':>7}  memory")
 for syst, mode, kind, tag in ROWS:
     for bag, p in BAGS:
-        cs, ps, rs, ms, ts, ams, aps, sg = [], [], [], [], [], [], [], []
-        for i in (1, 2, 3):
+        cs, ps, rs, ms, ts, ams, aps = [], [], [], [], [], [], []
+        for i in REPS:
             name = f"cyc_{kind}_{p}_{tag}_r{i}"
             cpu = f"{G}/{name}.cpu.csv" if kind == "glim" else f"{O}/{name}.cpu.csv"
             w = cpu_window.window(cpu)
             g = mem_growth.report(cpu)
+            if w is None or g is None:
+                sys.exit(f"{name}: run too short to score (needs >= {cpu_window.WIN / 2:.0f} s "
+                         f"of samples) -- {cpu}")
             cs.append(w["cores"]); ps.append(w["p95"]); rs.append(w["rss"])
             ms.append(g["tail"]); ts.append(g["still"])
             a, b = ate(bag, kind, name)
             if a is not None:
                 ams.append(a); aps.append(b)
-        rate = np.mean([rates[f"cyc_{kind}_{p}_{tag}_r{i}"] for i in (1, 2, 3)])
+        rate = np.mean([rates[f"cyc_{kind}_{p}_{tag}_r{i}"] for i in REPS])
         grow = np.mean(ms)
         still = sum(ts) >= 2
         mem = f"{grow:+.1f} MB/min, {'STILL GROWING' if still else 'flat'}"
-        print(f"{syst:8} {mode:10} {bag:9} {rate:7.2f} {np.mean(cs):6.2f} "
-              f"{min(cs):.2f}-{max(cs):.2f}".ljust(54)
-              + f"{np.mean(ps):5.2f} {np.mean(ams):8.1f} {np.mean(aps):8.1f} "
-                f"{max(rs):7.0f}  {mem}")
+        # never average an empty/short sample silently: the docstring promises n=3
+        if not ams:
+            a_med = a_p95 = "     n/a"
+            flag = " <- ATE UNAVAILABLE (0/%d reps scored)" % len(REPS)
+            degraded.append(f"{syst} {mode} {bag}: 0/{len(REPS)} reps")
+        else:
+            a_med, a_p95 = f"{np.mean(ams):8.1f}", f"{np.mean(aps):8.1f}"
+            flag = ""
+            if len(ams) < len(REPS):
+                flag = " <- ATE over %d/%d reps" % (len(ams), len(REPS))
+                degraded.append(f"{syst} {mode} {bag}: {len(ams)}/{len(REPS)} reps")
+        rng = f"{min(cs):.2f}-{max(cs):.2f}"
+        print(f"{syst:8} {mode:10} {bag:9} {rate:7.2f} {np.mean(cs):6.2f} {rng:>9} "
+              f"{np.mean(ps):5.2f} {a_med} {a_p95} {max(rs):7.0f}  {mem}{flag}")
+
+if degraded:
+    print("\nWARNING -- these rows are NOT n=%d as the header implies:" % len(REPS))
+    for d in degraded:
+        print(f"  {d}")

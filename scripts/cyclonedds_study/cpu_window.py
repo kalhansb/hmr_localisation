@@ -54,10 +54,15 @@ def window(path):
                 span=float(t[j] - t[i]), rss=float(r[i:j + 1].max() / 1024.0))
 
 
-print("%-24s %7s %7s %8s %8s" % ("run", "cores", "p95", "span_s", "rss_MB"))
-for a in sys.argv[1:]:
-    label, path = a.split(":", 1)
-    d = window(path)
-    print("%-24s %7s %7s %8s %8s" % (label, "n/a", "", "", "") if d is None else
-          "%-24s %7.2f %7.2f %8.0f %8.0f" % (label, d["cores"], d["p95"],
-                                             d["span"], d["rss"]))
+def main(argv):
+    print("%-24s %7s %7s %8s %8s" % ("run", "cores", "p95", "span_s", "rss_MB"))
+    for a in argv:
+        label, path = a.split(":", 1)
+        d = window(path)
+        print("%-24s %7s %7s %8s %8s" % (label, "n/a", "", "", "") if d is None else
+              "%-24s %7.2f %7.2f %8.0f %8.0f" % (label, d["cores"], d["p95"],
+                                                 d["span"], d["rss"]))
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

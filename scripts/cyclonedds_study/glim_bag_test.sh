@@ -25,13 +25,18 @@
 set -e
 WS="${WS:-$HOME/jetbot-slam/hmr_localisation}"
 PREFIX="${GLIM_PREFIX:-$HOME/glim-install}"
+# The GLIM install lives outside this repo; override any of these to point at yours.
+GLIM_WS="${GLIM_WS:-$HOME/glim_ws}"
+GLIM_CFG_ROOT="${GLIM_CFG_ROOT:-$HOME/glim-config}"
+GLIM_OUT="${GLIM_OUT:-$HOME/glim-output}"
+ROS_EXTRA="${ROS_EXTRA:-$HOME/ros-extra/prefix/opt/ros/humble}"
 SG="${SG:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 # No `set -u`: ROS setup.bash reads AMENT_TRACE_SETUP_FILES unguarded.
 source /opt/ros/humble/setup.bash
-source $HOME/glim_ws/install/setup.bash
-export AMENT_PREFIX_PATH=$HOME/ros-extra/prefix/opt/ros/humble:$AMENT_PREFIX_PATH
-export LD_LIBRARY_PATH=$PREFIX/lib:$HOME/ros-extra/prefix/opt/ros/humble/lib:$HOME/ros-extra/prefix/opt/ros/humble/lib/aarch64-linux-gnu:$LD_LIBRARY_PATH
+source "$GLIM_WS/install/setup.bash"
+export AMENT_PREFIX_PATH="$ROS_EXTRA:$AMENT_PREFIX_PATH"
+export LD_LIBRARY_PATH="$PREFIX/lib:$ROS_EXTRA/lib:$ROS_EXTRA/lib/aarch64-linux-gnu:$LD_LIBRARY_PATH"
 # Same transport as every hmr_localisation measurement, or the comparison is
 # not about the mapper.
 export FASTRTPS_DEFAULT_PROFILES_FILE="${SHM_PROFILE:-$WS/config/fastdds_shm.xml}"
@@ -51,10 +56,10 @@ case "$PROFILE" in
             CLOUD=/hesai/points;  IMU=/imu/data ;;
   *) echo "unknown bag profile '$PROFILE' (curtmini|bunker)"; exit 1 ;;
 esac
-CFG=$HOME/glim-config/${PROFILE}_${VARIANT}
+CFG="$GLIM_CFG_ROOT/${PROFILE}_${VARIANT}"
 [ -d "$CFG" ] || { echo "no config at $CFG"; exit 1; }
 [ -f "$BAG" ] || { echo "no bag at $BAG"; exit 1; }
-OUT=$HOME/glim-output
+OUT="$GLIM_OUT"
 mkdir -p "$OUT"
 
 for _p in "glim_rosnod[e]" "rosbag2_playe[r]" "glim_pose_recorde[r]"; do
@@ -94,7 +99,7 @@ PIDS=()
 # picks IT rather than the real node -- the first smoke run duly reported
 # "0.00 cores / 23 MB RSS", which is the wrapper sitting idle. taskset execs in
 # place, so $! is the node's own PID either way.
-GLIM_BIN=$HOME/glim_ws/install/glim_ros/lib/glim_ros/glim_rosnode
+GLIM_BIN="$GLIM_WS/install/glim_ros/lib/glim_ros/glim_rosnode"
 [ -x "$GLIM_BIN" ] || { echo "no glim_rosnode at $GLIM_BIN"; exit 1; }
 $NODE_TASKSET "$GLIM_BIN" --ros-args \
   -p config_path:="$CFG" > "$OUT/$NAME.node.log" 2>&1 &

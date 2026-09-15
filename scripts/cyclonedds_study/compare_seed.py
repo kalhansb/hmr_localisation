@@ -8,11 +8,12 @@ Alignment would absorb exactly the offset under test.
 Converged  -> the map determines the pose; the shared frame is seed-independent.
 Not        -> the pose is whatever you seeded; two robots would not share a frame.
 """
-import os
 import csv, math, os, sys
 import numpy as np
 
-O = os.environ.get('HMR_OUT', os.path.expanduser('~/jetbot-slam/hmr_localisation/output/jetson_test')) + '/'
+# Defaults to the vendored evidence; override to score fresh runs.
+O = os.environ.get('HMR_OUT',
+                   os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')) + '/'
 
 def load(name):
     p = O + name + '.poses.csv'
@@ -26,6 +27,20 @@ def load(name):
     yaw = np.arctan2(2*(q[:,3]*q[:,2] + q[:,0]*q[:,1]),
                      1 - 2*(q[:,1]**2 + q[:,2]**2))
     return t, xyz, yaw
+
+def load_seed(name):
+    """Row 0 of a run is the seed as configured, before any scan refines it.
+
+    load() drops it (the trajectory comparison wants published poses only), but the
+    perturbation under test is defined against THIS row -- not against the first
+    published pose, which the NDT initializer has already moved by ~2.5 cm.
+    """
+    p = O + name + '.poses.csv'
+    if not os.path.exists(p): return None
+    r = next(iter(csv.DictReader(open(p))))
+    return (float(r['position_x']), float(r['position_y']),
+            2 * math.atan2(float(r['orientation_z']), float(r['orientation_w'])))
+
 
 def compare(ref, test):
     rt, rx, ry_ = ref; tt, tx, ty_ = test
@@ -51,17 +66,22 @@ for bag, a, b in [('bunker','cyc_hmr_bunk_s4_r1','cyc_hmr_bunk_s4_r2'),
               f"{np.median(d)*100:.1f} cm median, {np.percentile(d,95)*100:.1f} cm p95")
 print()
 
-print("%-16s %8s | %s" % ("case", "seed err", "  position error vs nominal-seed run (m), by time"))
-print("%-16s %8s | %7s %7s %7s %7s %7s   %s" % ("", "", "0-5s", "5-15s", "15-40s", "40-80s", "80s+", "yaw_end"))
-print("-"*96)
+print("%-16s %16s | %s" % ("case", "seed offset", "  position error vs nominal-seed run (m), by time"))
+print("%-16s %7s %8s | %7s %7s %7s %7s %7s   %s"
+      % ("", "dpos m", "dyaw deg", "0-5s", "5-15s", "15-40s", "40-80s", "80s+", "yaw_end"))
+print("-"*104)
 for ln in open(CASES):
     f = ln.split()
     if len(f) < 6: continue
     n, bag, x, y = f[0], f[1], float(f[2]), float(f[3])
-    ref = load(REF[bag]); test = load('seed_' + n)
-    if ref is None or test is None:
-        print("%-16s %8s | (no data yet)" % (n, "")); continue
-    seed_err = math.hypot(x - ref[1][0][0], y - ref[1][0][1])
+    qz, qw = float(f[4]), float(f[5])
+    ref = load(REF[bag]); test = load('seed_' + n); nom = load_seed(REF[bag])
+    if ref is None or test is None or nom is None:
+        print("%-16s %16s | (no data yet)" % (n, "")); continue
+    # measured against the NOMINAL SEED, not the first published pose
+    dpos = math.hypot(x - nom[0], y - nom[1])
+    dyaw = math.degrees(abs(math.atan2(math.sin(2 * math.atan2(qz, qw) - nom[2]),
+                                       math.cos(2 * math.atan2(qz, qw) - nom[2]))))
     t, d, dy = compare(ref, test)
     bins = [(0,5),(5,15),(15,40),(40,80),(80,1e9)]
     cells = []
@@ -70,5 +90,5 @@ for ln in open(CASES):
         cells.append(f"{np.median(d[m]):7.3f}" if m.sum() else "      -")
     m = t >= 80
     ye = f"{np.median(dy[m]):5.2f}d" if m.sum() else "    -"
-    print("%-16s %8.3f | %s   %s   first pose %+.3f m @ t=%.1fs"
-          % (n, seed_err, " ".join(cells), ye, d[0], t[0]))
+    print("%-16s %7.3f %8.1f | %s   %s   first pose %+.3f m @ t=%.1fs"
+          % (n, dpos, dyaw, " ".join(cells), ye, d[0], t[0]))

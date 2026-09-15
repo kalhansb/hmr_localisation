@@ -350,6 +350,14 @@ ATE is measured against a **fixed** stride-1 hmr trajectory recorded under Fast-
 - ATE agreeing with the published values to within 0.2 cm is therefore *weak* evidence that
   the transport is harmless. It rules out gross scan loss (which would shift the trajectory)
   and nothing finer.
+- **The column is not a fair accuracy ranking between the two systems.** The reference is an
+  hmr_loc run, so the hmr rows measure that same algorithm against itself with beams
+  decimated, while the GLIM rows measure a different algorithm against hmr_loc's answer.
+  Reading "hmr 2.3 vs GLIM 2.6" as "hmr is more accurate" is exactly the mistake this
+  construction invites: hmr is partly being scored against itself, which no amount of
+  rigid alignment corrects. The column answers "how far from the stride-1 hmr_loc
+  trajectory", and only that. Neither figure is error against ground truth, because this
+  study has none.
 
 D4 and R5 apply unchanged: the reference is the localizer's own slowest run, and the
 robot is parked for most of both bags, so these ATE figures are substantially a
@@ -445,14 +453,28 @@ python3 $S/paired.py                            # regenerates §4
 `cyc_user.xml` in that directory is the exact file benchmarked
 (md5 `9188275c3cbb1c9b6a6edee4a0b53473`).
 
-Raw data lives outside the repo: `output/jetson_test/cyc_hmr_*` and `~/glim-output/cyc_glim_*`.
-The Fast-DDS comparison data in §4 is `output/jetson_test/1cv2_*` and
-`~/glim-output/{opt1c,gap1c,optf1c}_*` from 2026-09-12.
+The three aggregators need no data of their own: every CSV and log they read is vendored
+in `scripts/cyclonedds_study/results/`, and they default to it. So
 
-The repo copies were made self-locating (they originally hardcoded the session scratchpad
-path they were written in) and both aggregators were verified to regenerate §3 and §4
-byte-identically from a neutral working directory. `sweep_table.sh` writes its logs to
-`scripts/cyclonedds_study/results/` by default; override with `SG=<dir>`.
+```bash
+python3 $S/build_table.py     # §3
+python3 $S/paired.py          # §4
+python3 $S/compare_seed.py    # the seed-perturbation sweep
+```
+
+regenerate the published numbers from a bare checkout, with no bags, no GLIM install and
+no environment setup. Verified by running all three with `HOME` pointed at an empty
+directory, so no machine-specific path could resolve.
+
+To score *fresh* runs instead of the vendored ones, point the scripts at your own output
+directories: `HMR_OUT=<dir>` and `GLIM_OUT=<dir>`. `sweep_table.sh` writes its logs to
+`results/` by default; override with `SG=<dir>`. The originals came from
+`output/jetson_test/cyc_hmr_*`, `~/glim-output/cyc_glim_*`, and — for the §4 Fast-DDS
+baseline — `output/jetson_test/1cv2_*` and `~/glim-output/{opt1c,gap1c,optf1c}_*`,
+recorded 2026-09-12.
+
+The scripts were also made self-locating; they originally hardcoded the session scratchpad
+path they were written in.
 
 ## 8. Caveats
 

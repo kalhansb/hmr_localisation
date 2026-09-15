@@ -1,10 +1,20 @@
+#!/usr/bin/env python3
+"""Cyclone (n=3 mean) vs the Fast-DDS SHM baseline (n=1), per row.
+
+The n=1 baseline is cross-boot; see C4 in docs/cyclonedds_transport_study.md for
+what that does and does not license.
+"""
 import os
-import sys, io, contextlib, statistics as st
-sys.path.insert(0, __import__('os').path.dirname(__import__('os').path.abspath(__file__)))
-with contextlib.redirect_stdout(io.StringIO()):
-    import cpu_window, mem_growth
-O=os.environ.get('HMR_OUT', os.path.expanduser('~/jetbot-slam/hmr_localisation/output/jetson_test'))+'/'
-G=os.environ.get('GLIM_OUT', os.path.expanduser('~/glim-output'))+'/'
+import statistics as st
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cpu_window
+import mem_growth
+# Defaults to the vendored evidence; override to score fresh runs.
+R = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+O = os.environ.get('HMR_OUT', R) + '/'
+G = os.environ.get('GLIM_OUT', R) + '/'
 ROWS=[
  ("hmr_loc","stride 4","bunker",  [O+f'cyc_hmr_bunk_s4_r{i}.cpu.csv' for i in(1,2,3)], O+'1cv2_bunk_s4.cpu.csv'),
  ("hmr_loc","stride 4","curtmini",[O+f'cyc_hmr_curt_s4_r{i}.cpu.csv' for i in(1,2,3)], O+'1cv2_curt_s4.cpu.csv'),
@@ -18,9 +28,10 @@ ROWS=[
  ("glim","full+loop","curtmini",[G+f'cyc_glim_curt_o_combofull_r{i}.cpu.csv' for i in(1,2,3)], G+'optf1c_curt_full.cpu.csv'),
 ]
 def score(p):
-    with contextlib.redirect_stdout(io.StringIO()):
-        w=cpu_window.window(p); m=mem_growth.report(p)
-    return w,m
+    w = cpu_window.window(p); m = mem_growth.report(p)
+    if w is None or m is None:
+        sys.exit(f"run too short to score: {p}")
+    return w, m
 print("%-8s %-10s %-9s | %-22s | %-22s | %s"%("system","mode","bag","CYCLONE (n=3 mean)","FASTDDS SHM (n=1)","delta"))
 print("%-8s %-10s %-9s | %6s %6s %6s %5s | %6s %6s %6s %5s | %6s %7s"%("","","","cores","RSS","tail","still","cores","RSS","tail","still","dcores","dRSS"))
 print("-"*118)

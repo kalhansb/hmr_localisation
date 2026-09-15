@@ -5,7 +5,7 @@ Adds the C1 work-normalisation column: hmr_localisation does not process the sam
 number of scans as GLIM, so raw `cores` is not like-for-like. norm = cores scaled to
 the full-rate reference for that bag (GLIM's rate, which tracks the bag at ~10 Hz).
 """
-import os, sys, io, contextlib, subprocess, re
+import os, sys, subprocess, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 out = subprocess.run([sys.executable, os.path.join(HERE, "build_table.py")],

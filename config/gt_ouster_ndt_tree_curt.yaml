@@ -1,18 +1,6 @@
-# NDT config for the 2026_07_06 "curt_kalhan_coop" bag over the SAME gt_map.
-# Fork of gt_ouster_ndt_tree_fused.yaml. Two things differ, both because this
-# bag's TF tree is namespaced with a `_curt` suffix and the robot starts facing
-# the opposite side of the same environment:
-#
-#   1. base_frame_id: base_link_curt   (vs base_link)
-#   2. initial_pose: same start spot as map-test-2 but heading rotated ~165 deg
-#      (old base heading was map-yaw 180 deg; new is ~-15 deg / map +x).
-#
-# Sensor wiring (all from the bag's /tf_static, so play /tf_static on replay):
-#   base_link_curt -> os_sensor -> os_lidar : (0.1105,0,0.404) quat(0,0,1,0)  yaw pi
-#                                             (identical rig to map-test-2)
-#   base_link_curt -> imu_curt              : (0.062,0,0.015)  quat(0,0,-0.70711,0.70711)
-#   /curt/imu/data frame_id == imu_curt  ->  NO imu_link->imu alias needed
-#     (unlike the map-test-2 bring-up, whose /imu/data frame_id was "imu").
+# Curt bag: its TF tree carries a _curt suffix (base_frame_id base_link_curt)
+# and the robot starts facing the other way. Play /tf_static on replay;
+# /curt/imu/data is already in frame imu_curt. (notes: ndt-curt-bag-wiring)
 #
 # Launch (see doc/dscovox_exploration_run.md, coop-bag variant):
 #   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
@@ -22,6 +10,7 @@
 #     publish_lidar_tf:=false publish_imu_tf:=false
 #
 # odom -> base_link_curt comes from the EKF (config/ekf_odom_curt.yaml).
+# Moved comments: docs/hmr_localisation_code_notes.md
 /**:
     ros__parameters:
       # --- registration ---
@@ -55,10 +44,9 @@
       map_path: "/ws/gt_map/gt_map_us050.pcd"
 
       # --- initial pose: base_link_curt pose in map ---
-      # Pinned geometrically by structural scan-to-gt_map overlap (99.7% inliers):
-      # start x~3.0 y~0.0, heading yaw ~13 deg. That is ~168 deg from the map-test-2
-      # start (which was yaw 180 deg) -- i.e. facing the opposite side, as expected.
-      # z is loosely constrained (2D overlap); local ground ~-0.84 m, NDT refines it.
+      # Seed from scan-to-gt_map overlap: yaw ~13 deg. z is only loosely
+      # constrained (local ground ~-0.84 m); NDT refines it.
+      # (notes: ndt-curt-initial-pose)
       set_initial_pose: true
       initial_pose_x: 3.0
       initial_pose_y: 0.0

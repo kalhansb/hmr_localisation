@@ -8,19 +8,10 @@
 #   <robot>/odom --(identity static TF)---------------------> <robot base>
 #   <robot base> --(the bag's /tf_static)------------------> <sensor>
 #
-# Because BOTH robots localize against the SAME gt_map they share ONE global
-# `map` frame — no robot-to-robot pose estimation. The two bags' frame names are
-# already disjoint (bunker: odom/base_link/hesai_lidar/imu; curt: odom_curt/
-# base_link_curt/os_lidar/imu_curt), so only the NDT node name + /pcl_pose need
-# namespacing (done here via the /<robot> namespace).
-#
-# odom -> base is an IDENTITY static (the 'noekf' baseline): NDT then publishes
-#   map -> odom = map -> base_raw,
-# stamped per scan, so scovox resolves an exact-stamp map -> <sensor> for every
-# scan. This is the configuration verified end-to-end on the coop bags (aligned-
-# scan-vs-gt_map fitness ~0.2-0.4 m from the config's default near-origin seed —
-# NO custom initial pose needed). To add the smoothing robot_localization EKF
-# later, replace each identity static with the ekf_odom stack (see ekf_odom.yaml).
+# Both robots localize against the same gt_map, so they share one map frame;
+# frame names are already disjoint, so only the NDT node and /pcl_pose are
+# namespaced. odom->base is an identity static (noekf).
+# (notes: coop-loc-shared-map-noekf)
 #
 # YOU still supply, in the same graph:
 #   * each bag's sensor stream + /tf_static (play the bags — see the runbook).
@@ -34,6 +25,7 @@
 #
 # Wait until BOTH nodes log "Activating end" before playing the bags.
 # =======================================================================
+# Moved comments: docs/hmr_localisation_code_notes.md
 import launch
 import launch_ros
 import lifecycle_msgs.msg

@@ -9,26 +9,12 @@
 #   odom ──(THIS EKF: NDT pose + /imu/data)──────────────────────────────> base_link
 #   base_link ──(static extrinsics)──> os_lidar, imu
 #
-# Design (hdl_localization / Autoware ekf_localizer style, one scan matcher):
-#   * pose0 = the NDT global pose (/pcl_pose) restamped into the odom frame by
-#     scripts/ndt_pose_relay.py -> /pcl_pose_odom. This is the absolute,
-#     drift-bounded measurement.
-#   * imu0 = /imu/data angular velocity, for high-rate ORIENTATION smoothing
-#     between the (10-30 Hz) NDT poses. (Gyro-only -> it does NOT dead-reckon
-#     translation; between NDT poses position rides the constant-velocity model.
-#     See the imu0 notes below to add acceleration fusion.)
-#   The EKF runs with world_frame=odom, so it BROADCASTS odom -> base_link.
-#   The localizer then publishes map -> odom = map->base_raw o (odom->base)^-1,
-#   so the map->base PRODUCT still equals the raw NDT pose (SCovox, which looks
-#   up map->os_lidar, is unaffected) while odom->base becomes smooth, high-rate
-#   and continuous.
-#
-# Why feed the NDT pose restamped to `odom` (not map): with world_frame=odom the
-# EKF would otherwise transform the map-frame pose via map->odom -- which is
-# produced FROM this EKF's output (circular / startup deadlock). map and odom are
-# coincident up to the residual the localizer keeps in map->odom, so restamping
-# is the standard, stable resolution. See scripts/ndt_pose_relay.py.
+# pose0 is the NDT pose restamped into odom by ndt_pose_relay.py; a map-frame
+# pose would be circular, as the localizer builds map->odom from this EKF. imu0
+# is gyro only. map->base still equals the raw NDT pose.
+# (notes: ekf-odom-design)
 # =======================================================================
+# Moved comments: docs/hmr_localisation_code_notes.md
 
 ekf_filter_node:
   ros__parameters:
@@ -70,19 +56,10 @@ ekf_filter_node:
     pose0_nodelay: false
 
     # --- IMU (/imu/data, frame "imu") -----------------------------------------
-    # Fuse angular velocity only (vroll, vpitch, vyaw) -> high-rate orientation
-    # smoothing between NDT poses. Gyro is rotated into base_link via the static
-    # base_link->imu TF, so it is always valid regardless of whether /imu/data
-    # carries a fused orientation quaternion.
-    #
-    # NOT fused by default:
-    #   * absolute orientation (roll/pitch/yaw): owned by the NDT pose. This bag
-    #     publishes /imu/mag separately, which usually means /imu/data has no
-    #     fused orientation -- so do not trust it here.
-    #   * linear acceleration (ax/ay/az): noisy and needs gravity removal (which
-    #     in turn needs a valid IMU orientation). To enable it, set ax/ay/az true
-    #     below AND keep imu0_remove_gravitational_acceleration: true, but only if
-    #     your /imu/data actually reports a valid orientation.
+    # Gyro only (vroll, vpitch, vyaw), rotated into base_link by the static TF.
+    # Absolute orientation is owned by the NDT pose. Fuse ax/ay/az only if
+    # /imu/data has a valid orientation, keeping gravity removal true.
+    # (notes: ekf-odom-imu-fusion)
     imu0: /imu/data
     imu0_config: [false, false, false,
                   false, false, false,

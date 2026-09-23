@@ -9,23 +9,16 @@
 #     cloud_topic:=/ouster/points imu_topic:=/imu/data use_sim_time:=true
 #     publish_lidar_tf:=false publish_imu_tf:=false
 #
-# publish_lidar_tf/publish_imu_tf:=false → NDT does map->odom ONLY and does NOT
-# broadcast the sensor legs; standalone static_transform_publishers own them
-# (values read from the bag's /tf_static — we do NOT play /tf_static: its
-# base_link->camera_link is an uncalibrated identity, and playing it would
-# double-parent os_lidar against the live tree):
-#   base_link -> os_lidar           : x 0.1105  y 0 z 0.404   quat(0,0,1,0)  (yaw pi)
-#   base_link -> imu                : x 0.062   y 0 z 0.015   quat(0,0,0.7071068,0.7071068)
-#                                     (/imu/data frame_id is "imu", NOT the bag's "imu_link")
-#   base_link -> camera_color_frame : x 0.270676 y 0.049297 z 0.279109
-#                                     quat(-0.013514, 0.000986, 0.000780, 0.999908)
-#                                     (CALIBRATED; collapsed from the bag's
-#                                      os_lidar->camera_color_optical_frame leg)
+# With the sensor-TF launch flags false, NDT publishes map->odom only and
+# standalone static publishers own the sensor legs. Do not play the bag's
+# /tf_static: its camera leg is uncalibrated and it double-parents os_lidar.
+# (notes: ndt-fused-sensor-statics)
 #
 # NDT still CONSUMES base_link<-os_lidar / base_link<-imu from TF
 # (lidar_localization_component.cpp:1786 / :1395 lookupTransform), so those
 # statics must be up before scans arrive. odom->base_link comes from the
 # robot_localization EKF (launch/ekf_odom.launch.py, config/ekf_odom.yaml).
+# Moved comments: docs/hmr_localisation_code_notes.md
 /**:
     ros__parameters:
       # --- registration ---

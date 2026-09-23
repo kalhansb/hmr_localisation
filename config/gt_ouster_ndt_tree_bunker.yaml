@@ -1,25 +1,6 @@
-# NDT config for the 2026_07_06 "bunker_kalhan_coop" bag (AgileX Bunker tracked
-# robot + Hesai LiDAR) over the SAME gt_map as the curt/go1/map-test-2 bags.
-# Fork of gt_ouster_ndt_tree_go1.yaml. What differs from the go1 bag:
-#
-#   1. LiDAR is again a Hesai on /hesai/points (frame hesai_lidar), 230400 pts,
-#      per-point time field `timestamp` FLOAT64 (offset 18) — same decode as go1.
-#   2. On bunker the Hesai is mounted LEVEL, same as go1 physically — both scan a
-#      horizontal plane. The difference is only the FRAME axis convention: go1's
-#      hesai_lidar frame is rolled (its +Z points sideways), whereas bunker's is
-#      upright — the composed base_link->hesai_lidar from /tf_static is a pure
-#      Rz +90 with base_link +Z mapping to hesai_lidar +Z (see below). base_frame_id stays the
-#      stock `base_link`, which is the bag's TF ROOT (no odom->base_link in the
-#      bag), so Mode B (map->odom NDT + odom->base_link EKF) doesn't collide.
-#   3. There is NO /hesai/imu on this bag. The body IMU /imu/data (frame "imu",
-#      near-level, |a|~9.8 gravity +Z) drives NDT preintegration and the EKF; the
-#      mapper deskews with /imu/data too (hesai_lidar<-imu extrinsic from TF).
-#
-# Sensor wiring — composed from the bag's /tf_static (a large CAD-assembly tree,
-# root base_link); play /tf_static on replay so tf2 can resolve these:
-#   base_link -> hesai_lidar : xyz(0.113,0.003,0.366)  q(0,0,0.7065,0.7077) Rz +90 (LEVEL)
-#   base_link -> imu         : xyz(0.096,0.040,0.116)  q(0,0,0.7077,0.7065) Rz +90 (LEVEL)
-#   hesai_lidar -> imu       : xyz(0.037,0.017,-0.250) q(0,0,0.0016,1.0)     ~identity rot
+# Bunker bag: Hesai on /hesai/points, no /hesai/imu (/imu/data drives
+# preintegration). base_link is the bag's TF root, so Mode B does not collide;
+# play /tf_static on replay for the sensor TFs. (notes: ndt-bunker-bag-wiring)
 #
 # Launch (see doc/dscovox_exploration_run.md, go1/bunker-bag variant):
 #   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
@@ -29,6 +10,7 @@
 #     publish_lidar_tf:=false publish_imu_tf:=false
 #
 # odom -> base_link comes from the EKF (config/ekf_odom_bunker.yaml).
+# Moved comments: docs/hmr_localisation_code_notes.md
 /**:
     ros__parameters:
       # --- registration ---
@@ -59,10 +41,8 @@
       map_path: "/ws/gt_map/gt_map_us050.pcd"
 
       # --- initial pose: base_link pose in map (LEVEL — base_link is gravity-aligned) ---
-      # Pinned geometrically by structural scan-to-gt_map overlap (99.8% inliers,
-      # scan transformed hesai_lidar->base_link via base_link->hesai_lidar above).
-      # x~2.50 y~-0.25 yaw~194 deg (robot heads the opposite way from go1's ~106).
-      # z: map ground ~-0.82 + base height ~0.36 -> -0.46.
+      # Seed from scan-to-gt_map overlap: yaw ~194 deg; z is map ground (~-0.82)
+      # plus base height (~0.36). (notes: ndt-bunker-initial-pose)
       set_initial_pose: true
       initial_pose_x: 2.50
       initial_pose_y: -0.25

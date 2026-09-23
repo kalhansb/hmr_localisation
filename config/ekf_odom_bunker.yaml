@@ -1,27 +1,17 @@
 # =======================================================================
 # robot_localization EKF — continuous `odom -> base_link` for the Mode B tree
 # =======================================================================
-# Fork of ekf_odom_go1.yaml for the 2026_07_06 "bunker_kalhan_coop" bag (AgileX
-# Bunker tracked robot + Hesai LiDAR, SAME coop environment / gt_map as the go1
-# and curt bags). Keeps the stock `base_link` frame — the bag's /tf_static (a
-# large CAD-assembly tree) has base_link as its ROOT with the sensors below it:
-#
-#   base_link --(Rz 90)--> ... --> hesai_lidar   (LiDAR cloud frame, LEVEL)
-#   base_link --(Rz 90)--> ... --> imu           (/imu/data frame, LEVEL)
-#
-# base_link is the TF ROOT (no odom->base_link in the bag), so broadcasting
-# map->odom (NDT) + odom->base_link (this EKF) does NOT collide with replay.
-#
-# IMU: /imu/data (frame "imu", near-level body IMU, |a|~9.8 gravity +Z). This bag
-# has NO /hesai/imu, so /imu/data serves both the EKF and the mapper deskew. Fuse
-# angular velocity only; the gyro is rotated into base_link via the static
-# base_link->..->imu TF, valid whether or not /imu/data carries a fused quaternion.
+# Fork of ekf_odom_go1.yaml for the bunker_kalhan_coop bag (Bunker, Hesai).
+# base_link is the bag's TF root with no odom->base_link, so this EKF's
+# broadcast does not collide; /imu/data also feeds the mapper deskew.
+# (notes: ekf-odom-bunker-frames)
 #
 # Tree (REP-105):
 #   map ──(NDT vs gt_map, lidar_localization_ros2)──> odom
 #   odom ──(THIS EKF: NDT pose + /imu/data)──────────> base_link
 #   base_link ──(bag /tf_static)──> ... -> hesai_lidar, imu
 # =======================================================================
+# Moved comments: docs/hmr_localisation_code_notes.md
 
 ekf_filter_node:
   ros__parameters:

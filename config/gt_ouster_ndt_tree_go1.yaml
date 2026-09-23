@@ -1,28 +1,6 @@
-# NDT config for the 2026_06_29 "go1_kalhan_coop_2" bag (Unitree Go1 + Hesai
-# LiDAR) over the SAME gt_map as the curt/map-test-2 bags. Fork of
-# gt_ouster_ndt_tree_curt.yaml. What differs from the curt bag:
-#
-#   1. LiDAR is a Hesai on /hesai/points (frame hesai_lidar), NOT Ouster. The
-#      per-point time field is `timestamp` FLOAT64 (absolute) — the scovox mapper
-#      already decodes that; the NDT node only needs xyz so it is agnostic.
-#   2. base_frame_id stays the stock `base_link` — the Go1 URDF publishes the full
-#      static chain on /tf_static, and base_link is the bag's TF ROOT (no
-#      odom->base_link in the bag), so Mode B doesn't collide with replay:
-#        base_link --(Rz 90)--> trunk --> hesai --(Rz 114.6)--> hesai_lidar
-#                                    \--> imu   (/imu/data, near-level body IMU)
-#   3. The Hesai is mounted LEVEL — the physical scan plane is horizontal
-#      (verified: raw-cloud PCA disk-normal, pushed through base_link<-hesai_lidar,
-#      lands 9.4 deg off gravity = level within standing-pose noise). What looks
-#      like a tilt is only the hesai_lidar FRAME's rolled axis convention: its +Z
-#      points sideways (along base +Y) and +Y is the near-up axis. NDT is agnostic
-#      to that because base_frame_id=base_link is level and the cloud->base TF
-#      (from /tf_static) carries the frame rotation. Initial pose below is LEVEL.
-#
-# Sensor wiring — all from the bag's /tf_static, so play /tf_static on replay:
-#   base_link -> trunk           : xyz(0,0,0)          q(0,0,0.7068,0.7074)  Rz +90
-#   trunk     -> hesai           : xyz(0.175,-0.020,0.189) q(0,0.7068,0,0.7074) Ry +90
-#   hesai     -> hesai_lidar     : xyz(0,0,0)          q(0,0,0.8415,0.5403)  Rz +114.6
-#   trunk     -> imu             : xyz(0.115,-0.008,0.269) q(0,0,0.7068,0.7074) Rz +90
+# Go1 bag: Hesai on /hesai/points; NDT uses xyz only. base_link is the bag's TF
+# root, so Mode B does not collide. The Hesai is level; its frame's rolled axes
+# come from /tf_static, which replay must play. (notes: ndt-go1-bag-wiring)
 #
 # Launch (see doc/dscovox_exploration_run.md, go1-bag variant):
 #   ros2 launch lidar_localization_ros2 lidar_localization.launch.py
@@ -32,6 +10,7 @@
 #     publish_lidar_tf:=false publish_imu_tf:=false
 #
 # odom -> base_link comes from the EKF (config/ekf_odom_go1.yaml).
+# Moved comments: docs/hmr_localisation_code_notes.md
 /**:
     ros__parameters:
       # --- registration ---
@@ -63,10 +42,8 @@
       map_path: "/ws/gt_map/gt_map_us050.pcd"
 
       # --- initial pose: base_link pose in map (LEVEL — base_link is gravity-aligned) ---
-      # Pinned geometrically by structural scan-to-gt_map overlap (99.8% inliers,
-      # scan transformed hesai_lidar->base_link via the static chain above).
-      # x~2.75 y~-0.50 yaw~106 deg (robot faces a different side than the curt bag,
-      # whose yaw was ~13 deg). z: map ground ~-0.84 + base height ~0.74 -> -0.10.
+      # Seed from scan-to-gt_map overlap: level, yaw ~106 deg; z is map ground
+      # (~-0.84) plus base height (~0.74). (notes: ndt-go1-initial-pose)
       set_initial_pose: true
       initial_pose_x: 2.75
       initial_pose_y: -0.50
